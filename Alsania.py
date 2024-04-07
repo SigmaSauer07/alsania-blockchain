@@ -82,8 +82,12 @@ class SmartContract:
         self.code = code
         # Additional deployment logic can be added here
         
-    def execute_method(self, method_name, *args, sender=None):
+    def execute_method(self, method_name, *args, sender=None, coin=None):
         """Execute a method defined in the smart contract."""
+        # Check coin type
+        if coin != self.contract.blockchain.coin:
+            raise SmartContractError("Invalid coin type")
+        
         if method_name not in self.code:
             raise SmartContractError("Method does not exist in the contract")
 
@@ -165,9 +169,18 @@ class SmartContract:
     # Methods like tokenization, fundraising platforms, decentralized systems, etc. can be implemented here
     # Placeholder methods provided for demonstration purposes
 
+class AlsaniaCoin:
+    """Class representing the native coin of the Alsania blockchain."""
+    def __init__(self):
+        self.name = "Alsania"
+        self.symbol = "Als"
+        self.decimals = 18
+        self.max_supply = 50000000
+
 class AlsaniaBlockchain:
     """Class representing the Alsania blockchain."""
     def __init__(self, host, port, redundancy_factor, difficulty=2):
+        self.coin = AlsaniaCoin()
         self.chain = []
         self.load_chain_from_disk()
         if not self.chain:
@@ -306,6 +319,20 @@ class AlsaniaBlockchain:
         if not self.validate_transaction(transaction):
             return False
         
+        if transaction.coin != self.coin:
+            return False  # Reject transactions for other coins
+        
+        sender_stakeholder = self.find_stakeholder(transaction.sender)
+        recipient_stakeholder = self.find_stakeholder(transaction.recipient)
+        
+        if sender_stakeholder is None or recipient_stakeholder is None:
+            return False  # Sender or recipient not found
+        
+        if sender_stakeholder.balance < transaction.amount + transaction.fee:
+            return False  # Insufficient balance
+        
+        sender_stakeholder.balance -= transaction.amount + transaction.fee
+        recipient_stakeholder.balance += transaction.amount
         return True
 
 class Node:
@@ -334,11 +361,11 @@ class Node:
     # Placeholder methods provided for demonstration purposes
 
 class Stakeholder:
-    """Class representing a stakeholder."""
+    """Class representing a stakeholder with Alsania balance."""
     def __init__(self, name):
         self.name = name
         self.stake = 0
-        self.private_key = rsa.newkeys(512)[1]
+        self.balance = 0  # Alsania balance
 
 class Validator:
     """Class representing a validator."""
@@ -347,8 +374,8 @@ class Validator:
         self.public_key = rsa.newkeys(512)[0]
 
 class Transaction:
-    """Class representing a transaction."""
-    def __init__(self, sender, recipient, amount, fee, contract=None, method=None, args=None):
+    """Class representing a transaction, including Alsania transactions."""
+    def __init__(self, sender, recipient, amount, fee, contract=None, method=None, args=None, coin=None):
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
@@ -356,6 +383,7 @@ class Transaction:
         self.contract = contract
         self.method = method
         self.args = args
+        self.coin = coin
 
 class Block:
     """Class representing a block in the blockchain."""
@@ -373,3 +401,4 @@ class Block:
         """Calculate the hash of the block."""
         block_string = json.dumps(self.__dict__, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
+
