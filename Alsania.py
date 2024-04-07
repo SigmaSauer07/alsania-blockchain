@@ -49,6 +49,7 @@ class AlsaniaBlockchain:
         self.encryption_key = Fernet.generate_key()  # Generate encryption key
         self.sidechains = []  # List of sidechains
         self.data_directory = 'alsania_blockchain_data'
+        self.smart_contracts = {}  # Dictionary to store deployed smart contracts
 
     def create_genesis_block(self):
         genesis_block = Block(0, time.time(), [], "0")
@@ -179,6 +180,22 @@ class AlsaniaBlockchain:
                         self.chain.append(block)
         except Exception as e:
             raise FileIOError("Error loading blockchain from file.") from e
+
+    def deploy_smart_contract(self, contract_name, contract_code):
+        self.smart_contracts[contract_name] = contract_code
+
+    def execute_smart_contract(self, contract_name, function_name, *args):
+        if contract_name in self.smart_contracts:
+            contract_code = self.smart_contracts[contract_name]
+            # Execute the function of the smart contract
+            
+            if function_name in contract_code:
+                function = contract_code[function_name]
+                return function(*args)
+            else:
+                raise BlockchainError("Function not found in the smart contract.")
+        else:
+            raise BlockchainError("Smart contract not found.")
 
 class Stakeholder:
     def __init__(self, name):
