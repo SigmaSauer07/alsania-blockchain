@@ -346,165 +346,66 @@ class AlsaniaBlockchain:
             thread = threading.Thread(target=self.mine_block)
             thread.start()
             threads.append(thread)
-        
         for thread in threads:
             thread.join()
 
     def _create_block(self, previous_block, transactions):
         """Create a new block."""
-        new_block = Block(
-            index=previous_block.index + 1,
-            timestamp=time.time(),
-            transactions=transactions,
-            previous_hash=previous_block.hash_block()
-        )
-        
-        new_block.validators = self.select_validators()
-        # new_block = self.proof_of_stake(new_block)
-        
-        self.add_block_to_replicas(new_block)
-        
-        return new_block
+        block = Block(previous_block.index + 1, time.time(), transactions, previous_block.hash)
+        block.stake = self.calculate_stake(block)
+        return block
 
-    # More methods for block creation, validation, consensus, etc. can be added here
-    # Placeholder methods provided for demonstration purposes
-
-    def proof_of_stake(self, block):
-        """Implement proof of stake consensus mechanism."""
-        if not self.validate_block(block):
-            return None
-        
-        for _ in range(1000000):
-            block.nonce = random.randint(0, 1000000)
-            if self.valid_proof(block):
-                return block
-        
-        return None
-
-    def add_block_to_replicas(self, block):
-        """Add block replicas to maintain redundancy."""
-        for _ in range(self.redundancy_factor):
-            self.chain_replicas[block.index].append(block)
+    def calculate_stake(self, block):
+        """Calculate the stake for mining a block."""
+        # Placeholder - Implement stake calculation logic based on block properties
+        return 1
 
     def broadcast_mined_block(self, block):
-        """Broadcast a mined block to peers."""
-        for peer in self.node.peers:
-            peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            peer_socket.connect(peer)
-            peer_socket.sendall(pickle.dumps(block))
-            peer_socket.close()
+        """Broadcast a mined block to the network."""
+        # Placeholder - Implement broadcasting logic (e.g., peer-to-peer network)
+        pass
 
     def validate_block(self, block):
-        """Validate the integrity of a block."""
-        if block.hash_block() != block.hash:
-            return False
-        
-        for tx in block.transactions:
-            if not self.validate_transaction(tx):
-                return False
-        
+        """Validate a block before adding it to the chain."""
+        if block.previous_hash != self.chain[-1].hash:
+            raise ValidationFailedError("Invalid previous hash")
+
+        # Placeholder - Implement additional validation logic
+
         return True
 
-    def valid_proof(self, block):
-        """Check if a block's hash satisfies the proof of work."""
-        return block.hash.startswith('0' * self.difficulty)
-
-    def select_validators(self):
-        """Select validators for a block."""
-        # Randomized selection of validators weighted by stake
-        selected_validators = random.choices(self.stakeholders, k=len(self.stakeholders))
-        return selected_validators
+    def add_block_to_chain(self, block):
+        """Add a validated block to the blockchain."""
+        if block.index in self.validated_blocks:
+            raise ValidationFailedError("Block already added to chain")
+        self.chain.append(block)
+        self.validated_blocks.add(block.index)
 
     def load_chain_from_disk(self):
-        """Load blockchain data from disk."""
-        # Placeholder - Implement loading blockchain data from disk
+        """Load the blockchain from disk."""
+        # Placeholder - Implement logic to load blockchain data from disk
         pass
 
     def save_chain_to_disk(self):
-        """Save blockchain data to disk."""
-        # Placeholder - Implement saving blockchain data to disk
+        """Save the blockchain to disk."""
+        # Placeholder - Implement logic to save blockchain data to disk
         pass
-
-    def validate_transaction(self, transaction):
-        """Validate a transaction."""
-        # Implement more sophisticated transaction validation
-        return True
-
-    def process_transaction(self, transaction):
-        """Process a transaction."""
-        if not self.validate_transaction(transaction):
-            return False
-        
-        if transaction.coin != self.coin:
-            return False  # Reject transactions for other coins
-        
-        sender_stakeholder = self.find_stakeholder(transaction.sender)
-        recipient_stakeholder = self.find_stakeholder(transaction.recipient)
-        
-        if sender_stakeholder is None or recipient_stakeholder is None:
-            return False  # Sender or recipient not found
-        
-        if sender_stakeholder.balance < transaction.amount + transaction.fee:
-            return False  # Insufficient balance
-        
-        sender_stakeholder.balance -= transaction.amount + transaction.fee
-        recipient_stakeholder.balance += transaction.amount
-
-        # Distribute reward to miner
-        miner_stakeholder = self.find_stakeholder(transaction.sender)  # Assuming sender is the miner
-        self.coin.distribute_reward(miner_stakeholder, self.mining_reward)
-
-        # Collect fee
-        self.coin.collect_fee(recipient_stakeholder, transaction.fee)
-
-        return True
 
 class Node:
     """Class representing a node in the blockchain network."""
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.peers = []
-        self.backup_peers = []
 
     def start(self):
         """Start the node."""
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((self.host, self.port))
-        server_socket.listen()
-        
-        while True:
-            conn, addr = server_socket.accept()
-            threading.Thread(target=self.handle_peer_connection, args=(conn,)).start()
-
-    def handle_peer_connection(self, conn):
-        """Handle incoming peer connections."""
+        # Placeholder - Implement logic to start the node (e.g., establish connections)
         pass
 
-    # More methods for handling peer connections, communication, etc. can be added here
-    # Placeholder methods provided for demonstration purposes
-
-class Stakeholder:
-    """Class representing a stakeholder with Alsania balance."""
-    def __init__(self, name):
-        self.name = name
-        self.stake = 0
-        self.balance = 0  # Alsania balance
-
-class Validator:
-    """Class representing a validator."""
-    def __init__(self, name):
-        self.name = name
-        self.public_key = rsa.newkeys(512)[0]
-
-class Transaction:
-    """Class representing a transaction, including Alsania transactions."""
-    def __init__(self, sender, recipient, amount, fee, coin=None):
-        self.sender = sender
-        self.recipient = recipient
-        self.amount = amount
-        self.fee = fee
-        self.coin = coin
+    def stop(self):
+        """Stop the node."""
+        # Placeholder - Implement logic to stop the node
+        pass
 
 class Block:
     """Class representing a block in the blockchain."""
@@ -514,11 +415,32 @@ class Block:
         self.transactions = transactions
         self.previous_hash = previous_hash
         self.nonce = 0
-        self.stake = 0
-        self.validators = []
         self.hash = self.hash_block()
 
     def hash_block(self):
-        """Calculate the hash of the block."""
+        """Generate the hash of the block."""
         block_string = json.dumps(self.__dict__, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
+
+if __name__ == "__main__":
+    # Example usage
+    blockchain = AlsaniaBlockchain('localhost', 8888, redundancy_factor=3)
+    alice = 'Alice'
+    bob = 'Bob'
+    try:
+        blockchain.mine_block()  # Attempt to mine a block with no transactions (should fail)
+    except ValidationFailedError as e:
+        print(f"Error: {e}")
+    try:
+        blockchain.mine_blocks_parallel(3)  # Attempt to mine multiple blocks in parallel
+    except ValidationFailedError as e:
+        print(f"Error: {e}")
+    try:
+        blockchain.add_block_to_chain(blockchain.chain[0])  # Attempt to add genesis block again (should fail)
+    except ValidationFailedError as e:
+        print(f"Error: {e}")
+    try:
+        blockchain.chain[0].index = 2  # Attempt to modify genesis block index (should fail)
+        blockchain.validate_block(blockchain.chain[0])
+    except ValidationFailedError as e:
+        print(f"Error: {e}")
