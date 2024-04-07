@@ -83,7 +83,6 @@ class AlsaniaBlockchain:
             self.create_genesis_block()
         self.difficulty = difficulty
         self.pending_transactions = []
-        self.mining_reward = 10
         self.node = Node(host, port)
         self.node.start()
         self.stakeholders = []
@@ -94,6 +93,8 @@ class AlsaniaBlockchain:
         self.validated_blocks = set()
         self.contracts = {}
         self.consensus_mechanism = ProofOfWork(self.difficulty)
+        self.last_reward_halving_time = time.time()  # Track the last reward halving time
+        self.mining_reward = 10  # Initial mining reward
         # self.consensus_mechanism = DelegatedProofOfStake(self.stakeholders)
 
     def add_stakeholder(self, stakeholder):
@@ -117,6 +118,12 @@ class AlsaniaBlockchain:
         new_block = self.consensus_mechanism.mine_block(new_block)  # Mine the block
         self.broadcast_mined_block(new_block)
         self.pending_transactions = self.pending_transactions[max_transactions_per_block:]
+
+        # Check if it's time to halve the mining reward
+        if time.time() - self.last_reward_halving_time >= 2 * 365 * 24 * 60 * 60:  # 2 years in seconds
+            self.mining_reward /= 2  # Halve the mining reward
+            self.last_reward_halving_time = time.time()  # Update the last reward halving time
+
         return new_block
 
     def mine_blocks_parallel(self, num_blocks):
@@ -209,7 +216,7 @@ class Block:
 @app.route('/balance/<address>', methods=['GET'])
 def get_balance(address):
     # Placeholder - Retrieve balance from the blockchain
-    balance = 100  # Example balance
+    balance = blockchain.coin.balances[address]
     return jsonify({'balance': balance})
 
 @app.route('/send_transaction', methods=['POST'])
@@ -219,8 +226,36 @@ def send_transaction():
     recipient = data['recipient']
     amount = data['amount']
     # Placeholder - Process transaction and update blockchain
-    return jsonify({'message': 'Transaction processed successfully'}), 200
+    try:
+        blockchain.coin.transfer(sender, recipient, amount)
+        return jsonify({'message': 'Transaction processed successfully'}), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
+@app.route('/mine_block', methods=['POST'])
+def mine_block():
+    # Placeholder - Mine a block and add it to the blockchain
+    new_block = blockchain.mine_block()
+    if new_block:
+        return jsonify({'message': 'Block mined successfully', 'block': new_block.__dict__}), 200
+    else:
+        return jsonify({'message': 'No pending transactions to mine', 'block': None}), 400
+
+@app.route('/add_stakeholder', methods=['POST'])
+def add_stakeholder():
+    # Placeholder - Add a stakeholder to the blockchain
+    data = request.json
+    stakeholder = data['stakeholder']
+    blockchain.add_stakeholder(stakeholder)
+    return jsonify({'message': 'Stakeholder added successfully'}), 200
+
+@app.route('/chain', methods=['GET'])
+def get_chain():
+    # Placeholder - Retrieve the blockchain
+    chain_data = []
+    for block in blockchain.chain:
+        chain_data.append(block.__dict__)
+    return jsonify({'length': len(chain_data), 'chain': chain_data}), 200
 
 if __name__ == "__main__":
     # Start the blockchain server
