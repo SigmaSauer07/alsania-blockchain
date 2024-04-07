@@ -38,7 +38,7 @@ class Block:
         block_content = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce) + str(self.stake)
         return hashlib.sha256(block_content.encode()).hexdigest()
 
-class Blockchain:
+class AlsaniaBlockchain:
     def __init__(self):
         self.chain = []
         self.create_genesis_block()
@@ -48,7 +48,7 @@ class Blockchain:
         self.validators = []  # List of validators for DPoS
         self.encryption_key = Fernet.generate_key()  # Generate encryption key
         self.sidechains = []  # List of sidechains
-        self.data_directory = 'blockchain_data'
+        self.data_directory = 'alsania_blockchain_data'
 
     def create_genesis_block(self):
         genesis_block = Block(0, time.time(), [], "0")
@@ -123,7 +123,7 @@ class Blockchain:
             raise DecryptionError("Decryption error occurred.") from e
 
     def create_sidechain(self):
-        sidechain = Blockchain()
+        sidechain = AlsaniaBlockchain()
         sidechain.create_genesis_block()
         self.sidechains.append(sidechain)
         return sidechain
@@ -151,7 +151,7 @@ class Blockchain:
             if not os.path.exists(self.data_directory):
                 os.makedirs(self.data_directory)
 
-            with open(os.path.join(self.data_directory, 'blockchain.json'), 'w') as file:
+            with open(os.path.join(self.data_directory, 'alsania_blockchain.json'), 'w') as file:
                 chain_data = []
                 for block in self.chain:
                     block_data = {
@@ -169,8 +169,8 @@ class Blockchain:
 
     def load_chain_from_file(self):
         try:
-            if os.path.exists(os.path.join(self.data_directory, 'blockchain.json')):
-                with open(os.path.join(self.data_directory, 'blockchain.json'), 'r') as file:
+            if os.path.exists(os.path.join(self.data_directory, 'alsania_blockchain.json')):
+                with open(os.path.join(self.data_directory, 'alsania_blockchain.json'), 'r') as file:
                     chain_data = json.load(file)
                     for block_data in chain_data:
                         block = Block(block_data['index'], block_data['timestamp'], block_data['transactions'], block_data['previous_hash'])
@@ -191,11 +191,11 @@ class Validator:
 
     def vote(self, block):
         # Simulate voting process (e.g., by checking block validity)
-        return True  # Simplified for demonstration purposes
+        return True
 
 class Transaction:
     def __init__(self, sender, recipient, amount, fee):
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
-        self.fee =
+        self.fee = fee
