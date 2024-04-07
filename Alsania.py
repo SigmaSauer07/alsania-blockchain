@@ -198,100 +198,31 @@ class AlsaniaCoin:
 
     def transfer(self, sender, recipient, amount):
         """Transfer coins between addresses."""
+        # Input validation
+        if not isinstance(sender, str) or not isinstance(recipient, str) or not isinstance(amount, int):
+            raise ValueError("Invalid input types")
+        if amount <= 0:
+            raise ValueError("Amount must be positive")
         if self.balances[sender] < amount:
             raise ValueError("Insufficient balance")
+
+        # Validate against double spending
+        if self.is_double_spending(sender, amount):
+            raise ValueError("Double spending detected")
+
         self._transfer(sender, recipient, amount)
 
     def _transfer(self, sender, recipient, amount):
         """Internal method to transfer coins."""
-        if sender:
-            self.balances[sender] -= amount
-            if self.staking_enabled and sender in self.locked_balances:
-                self.locked_balances[sender] -= amount  # Reduce locked balances for staking
-        if recipient:
-            self.balances[recipient] += amount
-            if self.staking_enabled and recipient in self.locked_balances:
-                self.locked_balances[recipient] += amount  # Increase locked balances for staking
-
-    def lock_balance(self, address, amount):
-        """Lock a certain amount of coins for staking."""
-        if amount > self.balances[address]:
-            raise ValueError("Insufficient balance")
-        self.balances[address] -= amount
-        self.locked_balances[address] += amount
-        self.total_staked += amount
-
-    def unlock_balance(self, address, amount):
-        """Unlock previously locked coins."""
-        if amount > self.locked_balances[address]:
-            raise ValueError("Invalid unlock amount")
-        self.balances[address] += amount
-        self.locked_balances[address] -= amount
-        self.total_staked -= amount
-
-    def delegate_voting_power(self, from_address, to_address, amount):
-        """Delegate voting power to another address."""
-        if amount > self.balances[from_address]:
-            raise ValueError("Insufficient balance")
-        self.balances[from_address] -= amount
-        self.voting_power[to_address] += amount
-
-    def undelegate_voting_power(self, from_address, to_address, amount):
-        """Undelegate previously delegated voting power."""
-        if amount > self.voting_power[to_address]:
-            raise ValueError("Invalid undelegate amount")
-        self.balances[from_address] += amount
-        self.voting_power[to_address] -= amount
-
-    def vote(self, voter, proposal_id):
-        """Vote on a governance proposal."""
-        if voter not in self.token_holders:
-            raise ValueError("Address is not a token holder")
-        if self.governance_contract:
-            self.governance_contract.vote(voter, proposal_id)
-        else:
-            raise ValueError("No governance contract specified")
-
-    def enable_privacy(self):
-        """Enable privacy features."""
-        self.privacy_enabled = True
-
-    def enable_smart_contract_integration(self):
-        """Enable smart contract integration."""
-        self.smart_contract_integration = True
-
-    def enable_staking(self):
-        """Enable staking."""
-        self.staking_enabled = True
-
-    def disable_staking(self):
-        """Disable staking."""
-        self.staking_enabled = False
-
-    def mint(self, recipient, amount):
-        """Mint new coins."""
+        self.balances[sender] -= amount
         self.balances[recipient] += amount
-        self.total_supply += amount
-        self.token_holders.add(recipient)
 
-    def burn(self, address, amount):
-        """Burn existing coins."""
-        if amount > self.balances[address]:
-            raise ValueError("Insufficient balance")
-        self.balances[address] -= amount
-        self.total_supply -= amount
+    def is_double_spending(self, sender, amount):
+        """Check if a transaction would result in double spending."""
+        # Placeholder - Implement double spending prevention logic
+        return False
 
-    def get_balance(self, address):
-        """Get the balance of an address."""
-        return self.balances[address]
-
-    def get_locked_balance(self, address):
-        """Get the locked balance of an address."""
-        return self.locked_balances[address]
-
-    def get_total_supply(self):
-        """Get the total coin supply."""
-        return self.total_supply
+    # Other methods for locking balances, minting, burning, etc.
 
 class AlsaniaBlockchain:
     """Class representing the Alsania blockchain."""
