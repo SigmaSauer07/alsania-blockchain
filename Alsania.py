@@ -7,171 +7,20 @@ import threading
 import pickle
 import rsa
 from collections import defaultdict
+from flask import Flask, request, jsonify
+
+# Add Flask app for handling wallet operations
+app = Flask(__name__)
 
 class BlockchainError(Exception):
     """Base class for blockchain-related errors."""
     pass
 
-class ValidationFailedError(BlockchainError):
-    """Exception raised for validation failures."""
-    pass
+# Define additional exception classes, if needed
 
-class FileIOError(BlockchainError):
-    """Exception raised for file I/O errors."""
-    pass
-
-class EncryptionError(BlockchainError):
-    """Exception raised for encryption errors."""
-    pass
-
-class DecryptionError(BlockchainError):
-    """Exception raised for decryption errors."""
-    pass
-
-class ProofOfWork:
-    """Class for Proof of Work consensus mechanism."""
-    def __init__(self, difficulty):
-        self.difficulty = difficulty
-
-    def mine_block(self, block):
-        """Mine a block until a valid hash is found."""
-        while not block.hash.startswith('0' * self.difficulty):
-            block.nonce += 1
-            block.hash = block.hash_block()
-        return block
-
-class DelegatedProofOfStake:
-    """Class for Delegated Proof of Stake consensus mechanism."""
-    def __init__(self, stakeholders):
-        self.stakeholders = stakeholders
-        self.delegates = []
-
-    def vote_for_delegates(self):
-        """Logic for stakeholders to vote for delegates."""
-        # Placeholder - Implement logic for stakeholders to vote for delegates based on their stakes
-        pass
-
-    def select_delegates(self):
-        """Logic for selecting delegates based on stakeholder votes."""
-        # Placeholder - Implement logic for selecting delegates based on stakeholder votes
-        pass
-
-class SmartContractError(BlockchainError):
-    """Exception raised for errors related to smart contracts."""
-    pass
-
-class SmartContract:
-    """Class representing a smart contract."""
-    def __init__(self, contract_id, owner):
-        self.contract_id = contract_id
-        self.owner = owner
-        self.code = None
-        self.state = defaultdict(dict)  # Persistent storage for contract state
-        self.events = []
-        self.permissions = defaultdict(set)
-        self.event_subscribers = defaultdict(list)  # Mapping of event names to subscriber addresses
-        self.upgradeable = False  # Flag indicating whether the contract is upgradeable
-        self.allowed_execution_times = None  # Time-based access control
-        self.gas_limit = None
-        self.gas_fee = None
-
-    def deploy(self, code):
-        """Deploy the smart contract."""
-        if self.code is not None:
-            raise SmartContractError("Contract already deployed")
-        self.code = code
-        # Additional deployment logic can be added here
-        
-    def execute_method(self, method_name, *args, sender=None, coin=None):
-        """Execute a method defined in the smart contract."""
-        # Check coin type
-        if coin != self.contract.blockchain.coin:
-            raise SmartContractError("Invalid coin type")
-        
-        if method_name not in self.code:
-            raise SmartContractError("Method does not exist in the contract")
-
-        if sender is not None and not self.check_permission(method_name, sender):
-            raise SmartContractError("Permission denied")
-
-        if self.allowed_execution_times is not None and not self.check_execution_time():
-            raise SmartContractError("Method cannot be executed at this time")
-
-        method = self.code[method_name]
-        if method["type"] == "function":
-            return self._execute_function(method_name, *args)
-        elif method["type"] == "view":
-            return self._execute_view_method(method_name, *args)
-        else:
-            raise SmartContractError("Invalid method type")
-
-    def emit_event(self, event_name, *args):
-        """Emit an event from the smart contract."""
-        event = {
-            'name': event_name,
-            'args': args,
-            'timestamp': time.time()
-        }
-        self.events.append(event)
-        self.notify_subscribers(event_name, *args)
-
-    def notify_subscribers(self, event_name, *args):
-        """Notify subscribers of an event."""
-        for subscriber_address in self.event_subscribers[event_name]:
-            # Placeholder - Implement logic to notify subscribers (e.g., send a message, trigger a callback)
-            pass
-
-    def subscribe_to_event(self, event_name, subscriber_address):
-        """Subscribe to an event."""
-        self.event_subscribers[event_name].append(subscriber_address)
-
-    def _execute_function(self, method_name, *args):
-        """Execute a function type method."""
-        method = self.code[method_name]
-        if len(args) != len(method["params"]):
-            raise SmartContractError("Incorrect number of arguments for method")
-        if self.gas_limit is not None and method["gas_cost"] > self.gas_limit:
-            raise SmartContractError("Gas limit exceeded")
-        result = method["function"](*args, contract=self)  # Pass contract reference for state access
-        self.emit_event(method_name, *args)
-        return result
-
-    def _execute_view_method(self, method_name, *args):
-        """Execute a view type method."""
-        method = self.code[method_name]
-        if len(args) != len(method["params"]):
-            raise SmartContractError("Incorrect number of arguments for method")
-        if self.gas_limit is not None and method["gas_cost"] > self.gas_limit:
-            raise SmartContractError("Gas limit exceeded")
-        return method["function"](*args, contract=self)  # Pass contract reference for state access
-
-    def grant_permission(self, method_name, address):
-        """Grant permission to an address."""
-        self.permissions[method_name].add(address)
-
-    def revoke_permission(self, method_name, address):
-        """Revoke permission from an address."""
-        if method_name in self.permissions:
-            self.permissions[method_name].remove(address)
-
-    def check_permission(self, method_name, address):
-        """Check if an address has permission for a method."""
-        if method_name not in self.permissions:
-            return True
-        return address in self.permissions[method_name]
-
-    def check_execution_time(self):
-        """Check if the method can be executed at the current time."""
-        # Placeholder - Implement time-based access control logic here
-        return True  # For simplicity, always return True for now
-
-    # Methods for various functionalities of smart contracts (placeholders)
-    # Methods like tokenization, fundraising platforms, decentralized systems, etc. can be implemented here
-    # Placeholder methods provided for demonstration purposes
 
 class AlsaniaCoin:
     """Class representing the native coin of the Alsania blockchain."""
-
     def __init__(self):
         self.name = "Alsania"
         self.symbol = "ALS"
@@ -322,6 +171,7 @@ class AlsaniaBlockchain:
         # Placeholder - Implement logic to save blockchain data to disk
         pass
 
+
 class Node:
     """Class representing a node in the blockchain network."""
     def __init__(self, host, port):
@@ -338,6 +188,7 @@ class Node:
         # Placeholder - Implement logic to stop the node
         pass
 
+
 class Block:
     """Class representing a block in the blockchain."""
     def __init__(self, index, timestamp, transactions, previous_hash):
@@ -353,25 +204,25 @@ class Block:
         block_string = json.dumps(self.__dict__, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
 
+
+# Add Flask routes for handling wallet operations
+@app.route('/balance/<address>', methods=['GET'])
+def get_balance(address):
+    # Placeholder - Retrieve balance from the blockchain
+    balance = 100  # Example balance
+    return jsonify({'balance': balance})
+
+@app.route('/send_transaction', methods=['POST'])
+def send_transaction():
+    data = request.json
+    sender = data['sender']
+    recipient = data['recipient']
+    amount = data['amount']
+    # Placeholder - Process transaction and update blockchain
+    return jsonify({'message': 'Transaction processed successfully'}), 200
+
+
 if __name__ == "__main__":
-    # Example usage
+    # Start the blockchain server
     blockchain = AlsaniaBlockchain('localhost', 8888, redundancy_factor=3)
-    alice = 'Alice'
-    bob = 'Bob'
-    try:
-        blockchain.mine_block()  # Attempt to mine a block with no transactions (should fail)
-    except ValidationFailedError as e:
-        print(f"Error: {e}")
-    try:
-        blockchain.mine_blocks_parallel(3)  # Attempt to mine multiple blocks in parallel
-    except ValidationFailedError as e:
-        print(f"Error: {e}")
-    try:
-        blockchain.add_block_to_chain(blockchain.chain[0])  # Attempt to add genesis block again (should fail)
-    except ValidationFailedError as e:
-        print(f"Error: {e}")
-    try:
-        blockchain.chain[0].index = 2  # Attempt to modify genesis block index (should fail)
-        blockchain.validate_block(blockchain.chain[0])
-    except ValidationFailedError as e:
-        print(f"Error: {e}")
+    app.run(debug=True)  # Run the Flask app for handling wallet operations
