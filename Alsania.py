@@ -44,12 +44,16 @@ class AlsaniaBlockchain:
         self.create_genesis_block()
         self.difficulty = 2  # Initial difficulty
         self.pending_transactions = []
-        self.mining_reward = 10  # Reward for mining a block
+        self.mining_reward = 10  # Initial reward for mining a block
+        self.last_halving_timestamp = time.time()  # Timestamp of the last halving event
         self.validators = []  # List of validators for DPoS
         self.encryption_key = Fernet.generate_key()  # Generate encryption key
         self.sidechains = []  # List of sidechains
         self.data_directory = 'alsania_blockchain_data'
         self.smart_contracts = {}  # Dictionary to store deployed smart contracts
+        self.decimals = 18  # Number of decimals for Alsania
+        self.symbol = "Asi"  # Symbol for Alsania
+        self.total_supply = 50000000 * 10**self.decimals  # Total supply of Alsania tokens
 
     def create_genesis_block(self):
         genesis_block = Block(0, time.time(), [], "0")
@@ -99,10 +103,8 @@ class AlsaniaBlockchain:
 
     def proof_of_stake_selection(self, block):
         if self.validators:
-            if block.index % len(self.validators) == 0:
-                return self.validators[block.index % len(self.validators)]
-            else:
-                return self.validators[block.index % len(self.validators) - 1]
+            stakeholder_index = block.index % len(self.validators)
+            return self.validators[stakeholder_index]
         else:
             raise ValidationFailedError("No validators available for PoS selection.")
 
@@ -181,6 +183,18 @@ class AlsaniaBlockchain:
         except Exception as e:
             raise FileIOError("Error loading blockchain from file.") from e
 
+    def halve_mining_reward(self):
+        # Halve the mining reward
+        self.mining_reward /= 2
+        self.last_halving_timestamp = time.time()
+        
+    def adjust_mining_reward(self):
+        current_time = time.time()
+        time_since_last_halving = current_time - self.last_halving_timestamp
+        # Check if 2 years (in seconds) have passed since the last halving
+        if time_since_last_halving >= 2 * 365 * 24 * 60 * 60:
+            self.halve_mining_reward()
+
     def deploy_smart_contract(self, contract_name, contract_code):
         self.smart_contracts[contract_name] = contract_code
 
@@ -188,7 +202,6 @@ class AlsaniaBlockchain:
         if contract_name in self.smart_contracts:
             contract_code = self.smart_contracts[contract_name]
             # Execute the function of the smart contract
-            
             if function_name in contract_code:
                 function = contract_code[function_name]
                 return function(*args)
