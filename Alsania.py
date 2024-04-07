@@ -54,6 +54,7 @@ class AlsaniaBlockchain:
         self.decimals = 18  # Number of decimals for Alsania
         self.symbol = "Asi"  # Symbol for Alsania
         self.total_supply = 50000000 * 10**self.decimals  # Total supply of Alsania tokens
+        self.stakeholders = []
 
     def create_genesis_block(self):
         genesis_block = Block(0, time.time(), [], "0")
@@ -88,10 +89,12 @@ class AlsaniaBlockchain:
             self.difficulty = max(1, self.difficulty)  # Ensure difficulty is not less than 1
 
     def add_stakeholder(self, name):
-        return Stakeholder(name)
+        stakeholder = Stakeholder(name)
+        self.stakeholders.append(stakeholder)
+        return stakeholder
 
-    def validate_block(self, block, stakeholder):
-        if block.stake > 0 and stakeholder.stake >= 10:
+    def validate_block(self, block):
+        if block.stake > 0:
             return True
         return False
 
@@ -135,26 +138,12 @@ class AlsaniaBlockchain:
         # Implement sharding logic to distribute transactions among shards
         pass
 
-    def backup_chain(self):
-        try:
-            # Perform backup of blockchain data
-            pass
-        except Exception as e:
-            raise FileIOError("Error backing up blockchain data.") from e
-
-    def verify_chain_integrity(self):
-        try:
-            # Verify integrity of blockchain data
-            pass
-        except Exception as e:
-            raise BlockchainError("Blockchain data integrity check failed.") from e
-
-    def save_chain_to_file(self):
+    def backup_chain(self, filename='alsania_backup.json'):
         try:
             if not os.path.exists(self.data_directory):
                 os.makedirs(self.data_directory)
 
-            with open(os.path.join(self.data_directory, 'alsania_blockchain.json'), 'w') as file:
+            with open(os.path.join(self.data_directory, filename), 'w') as file:
                 chain_data = []
                 for block in self.chain:
                     block_data = {
@@ -168,26 +157,22 @@ class AlsaniaBlockchain:
                     chain_data.append(block_data)
                 json.dump(chain_data, file, indent=4)
         except Exception as e:
-            raise FileIOError("Error saving blockchain to file.") from e
+            raise FileIOError("Error backing upblockchain data.") from e
 
-    def load_chain_from_file(self):
+    def verify_chain_integrity(self):
         try:
-            if os.path.exists(os.path.join(self.data_directory, 'alsania_blockchain.json')):
-                with open(os.path.join(self.data_directory, 'alsania_blockchain.json'), 'r') as file:
-                    chain_data = json.load(file)
-                    for block_data in chain_data:
-                        block = Block(block_data['index'], block_data['timestamp'], block_data['transactions'], block_data['previous_hash'])
-                        block.nonce = block_data['nonce']
-                        block.stake = block_data['stake']
-                        self.chain.append(block)
+            for i in range(1, len(self.chain)):
+                if not self.validate_block(self.chain[i]):
+                    return False
+            return True
         except Exception as e:
-            raise FileIOError("Error loading blockchain from file.") from e
+            raise BlockchainError("Blockchain data integrity check failed.") from e
 
     def halve_mining_reward(self):
         # Halve the mining reward
         self.mining_reward /= 2
         self.last_halving_timestamp = time.time()
-        
+
     def adjust_mining_reward(self):
         current_time = time.time()
         time_since_last_halving = current_time - self.last_halving_timestamp
@@ -201,7 +186,6 @@ class AlsaniaBlockchain:
     def execute_smart_contract(self, contract_name, function_name, *args):
         if contract_name in self.smart_contracts:
             contract_code = self.smart_contracts[contract_name]
-            # Execute the function of the smart contract
             if function_name in contract_code:
                 function = contract_code[function_name]
                 return function(*args)
