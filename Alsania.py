@@ -291,6 +291,24 @@ class AlsaniaBlockchain:
             self.current_view += 1
             self.primary_replica = None
 
+    def broadcast_block(self, block):
+        serialized_block = json.dumps({
+            'index': block.index,
+            'timestamp': block.timestamp,
+            'transactions': block.transactions,
+            'previous_hash': block.previous_hash,
+            'nonce': block.nonce,
+            'stake': block.stake
+        })
+        for peer in self.node.peers:
+            try:
+                peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                peer_socket.connect(peer)
+                peer_socket.sendall(serialized_block.encode())
+                peer_socket.close()
+            except Exception as e:
+                print(f"Error broadcasting block to {peer}: {e}")
+
 class Stakeholder:
     def __init__(self, name):
         self.name = name
