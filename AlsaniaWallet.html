@@ -46,6 +46,10 @@
             background-color: #39ff14; /* Neon green on hover */
             color: #1a1a1a; /* Dark button text color */
         }
+        #balance {
+            color: #39ff14; /* Neon green balance text color */
+            margin-bottom: 10px;
+        }
         #result {
             color: #39ff14; /* Neon green result text color */
             margin-top: 10px;
@@ -55,6 +59,7 @@
 <body>
     <div class="container">
         <h2>Alsania Wallet</h2>
+        <div id="balance"></div>
         <div class="input-group">
             <label for="address">Address:</label>
             <input type="text" id="address" placeholder="Enter your address">
@@ -82,7 +87,7 @@
             fetch('/balance/' + address)
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('result').innerText = 'Balance: ' + data.balance;
+                    document.getElementById('balance').innerText = 'Balance: ' + data.balance;
                 })
                 .catch(error => {
                     console.error('Error:', error);
