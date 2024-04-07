@@ -6,6 +6,25 @@ import os
 
 from cryptography.fernet import Fernet
 
+class BlockchainError(Exception):
+    pass
+
+class ValidationFailedError(BlockchainError):
+    def __init__(self, message="Validation failed."):
+        super().__init__(message)
+
+class FileIOError(BlockchainError):
+    def __init__(self, message="File I/O error occurred."):
+        super().__init__(message)
+
+class EncryptionError(BlockchainError):
+    def __init__(self, message="Encryption error occurred."):
+        super().__init__(message)
+
+class DecryptionError(BlockchainError):
+    def __init__(self, message="Decryption error occurred."):
+        super().__init__(message)
+
 class Block:
     def __init__(self, index, timestamp, transactions, previous_hash):
         self.index = index
@@ -41,8 +60,8 @@ class Blockchain:
             new_block.previous_hash = self.chain[-1].hash_block()
             new_block.index = len(self.chain)
             self.chain.append(new_block)
-        except IndexError:
-            print("Error: Genesis block is missing. Cannot add new block.")
+        except IndexError as e:
+            raise ValidationFailedError("Genesis block is missing. Cannot add new block.") from e
 
     def proof_of_work(self, block):
         while block.hash_block()[:self.difficulty] != '0' * self.difficulty:
@@ -75,7 +94,7 @@ class Blockchain:
         if validators:
             self.validators = validators
         else:
-            print("Error: No validators provided for DPoS.")
+            raise ValidationFailedError("No validators provided for DPoS.")
 
     def proof_of_stake_selection(self, block):
         if self.validators:
@@ -84,8 +103,7 @@ class Blockchain:
             else:
                 return self.validators[block.index % len(self.validators) - 1]
         else:
-            print("Error: No validators available for PoS selection.")
-            return None
+            raise ValidationFailedError("No validators available for PoS selection.")
 
     def add_transaction(self, transaction):
         self.pending_transactions.append(transaction)
@@ -95,16 +113,14 @@ class Blockchain:
             cipher_suite = Fernet(self.encryption_key)
             return cipher_suite.encrypt(data.encode()).decode()
         except Exception as e:
-            print(f"Encryption Error: {e}")
-            return None
+            raise EncryptionError("Encryption error occurred.") from e
 
     def decrypt_data(self, encrypted_data):
         try:
             cipher_suite = Fernet(self.encryption_key)
             return cipher_suite.decrypt(encrypted_data.encode()).decode()
         except Exception as e:
-            print(f"Decryption Error: {e}")
-            return None
+            raise DecryptionError("Decryption error occurred.") from e
 
     def create_sidechain(self):
         sidechain = Blockchain()
@@ -115,6 +131,20 @@ class Blockchain:
     def shard_transactions(self):
         # Implement sharding logic to distribute transactions among shards
         pass
+
+    def backup_chain(self):
+        try:
+            # Perform backup of blockchain data
+            pass
+        except Exception as e:
+            raise FileIOError("Error backing up blockchain data.") from e
+
+    def verify_chain_integrity(self):
+        try:
+            # Verify integrity of blockchain data
+            pass
+        except Exception as e:
+            raise BlockchainError("Blockchain data integrity check failed.") from e
 
     def save_chain_to_file(self):
         try:
@@ -135,7 +165,7 @@ class Blockchain:
                     chain_data.append(block_data)
                 json.dump(chain_data, file, indent=4)
         except Exception as e:
-            print(f"Error saving blockchain to file: {e}")
+            raise FileIOError("Error saving blockchain to file.") from e
 
     def load_chain_from_file(self):
         try:
@@ -148,7 +178,7 @@ class Blockchain:
                         block.stake = block_data['stake']
                         self.chain.append(block)
         except Exception as e:
-            print(f"Error loading blockchain from file: {e}")
+            raise FileIOError("Error loading blockchain from file.") from e
 
 class Stakeholder:
     def __init__(self, name):
@@ -168,24 +198,4 @@ class Transaction:
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
-        self.fee = fee
-
-# Example usage:
-if __name__ == "__main__":
-    alsania_chain = Blockchain()
-
-    # Add stakeholders
-    alice = alsania_chain.add_stakeholder("Alice")
-    bob = alsania_chain.add_stakeholder("Bob")
-    
-    # Delegate Proof of Stake
-    alsania_chain.delegate_proof_of_stake([Validator("Validator1"), Validator("Validator2"), Validator("Validator3")])
-
-    # Add transactions
-    alsania_chain.add_transaction(Transaction("Alice", "Bob", 50, 5))
-    alsania_chain.add_transaction(Transaction("Bob", "Alice", 20, 3))
-    alsania_chain.add_transaction(Transaction("Alice", "Charlie", 30, 4))
-
-    # Mine pending transactions using DPoS
-    validator = alsania_chain.proof_of_stake_selection(alsania_chain.chain[-1])
-    alsania_chain.mine_pending_transactions(validator)
+        self.fee =
