@@ -1,6 +1,9 @@
 import hashlib
 import time
 import random
+import json
+import os
+
 from cryptography.fernet import Fernet
 
 class Block:
@@ -26,6 +29,7 @@ class Blockchain:
         self.validators = []  # List of validators for DPoS
         self.encryption_key = Fernet.generate_key()  # Generate encryption key
         self.sidechains = []  # List of sidechains
+        self.data_directory = 'blockchain_data'
 
     def create_genesis_block(self):
         genesis_block = Block(0, time.time(), [], "0")
@@ -33,9 +37,12 @@ class Blockchain:
         self.chain.append(genesis_block)
 
     def add_block(self, new_block):
-        new_block.previous_hash = self.chain[-1].hash_block()
-        new_block.index = len(self.chain)
-        self.chain.append(new_block)
+        try:
+            new_block.previous_hash = self.chain[-1].hash_block()
+            new_block.index = len(self.chain)
+            self.chain.append(new_block)
+        except IndexError:
+            print("Error: Genesis block is missing. Cannot add new block.")
 
     def proof_of_work(self, block):
         while block.hash_block()[:self.difficulty] != '0' * self.difficulty:
@@ -65,24 +72,39 @@ class Blockchain:
         return False
 
     def delegate_proof_of_stake(self, validators):
-        self.validators = validators
+        if validators:
+            self.validators = validators
+        else:
+            print("Error: No validators provided for DPoS.")
 
     def proof_of_stake_selection(self, block):
-        if block.index % len(self.validators) == 0:
-            return self.validators[block.index % len(self.validators)]
+        if self.validators:
+            if block.index % len(self.validators) == 0:
+                return self.validators[block.index % len(self.validators)]
+            else:
+                return self.validators[block.index % len(self.validators) - 1]
         else:
-            return self.validators[block.index % len(self.validators) - 1]
+            print("Error: No validators available for PoS selection.")
+            return None
 
     def add_transaction(self, transaction):
         self.pending_transactions.append(transaction)
 
     def encrypt_data(self, data):
-        cipher_suite = Fernet(self.encryption_key)
-        return cipher_suite.encrypt(data.encode()).decode()
+        try:
+            cipher_suite = Fernet(self.encryption_key)
+            return cipher_suite.encrypt(data.encode()).decode()
+        except Exception as e:
+            print(f"Encryption Error: {e}")
+            return None
 
     def decrypt_data(self, encrypted_data):
-        cipher_suite = Fernet(self.encryption_key)
-        return cipher_suite.decrypt(encrypted_data.encode()).decode()
+        try:
+            cipher_suite = Fernet(self.encryption_key)
+            return cipher_suite.decrypt(encrypted_data.encode()).decode()
+        except Exception as e:
+            print(f"Decryption Error: {e}")
+            return None
 
     def create_sidechain(self):
         sidechain = Blockchain()
@@ -93,6 +115,40 @@ class Blockchain:
     def shard_transactions(self):
         # Implement sharding logic to distribute transactions among shards
         pass
+
+    def save_chain_to_file(self):
+        try:
+            if not os.path.exists(self.data_directory):
+                os.makedirs(self.data_directory)
+
+            with open(os.path.join(self.data_directory, 'blockchain.json'), 'w') as file:
+                chain_data = []
+                for block in self.chain:
+                    block_data = {
+                        'index': block.index,
+                        'timestamp': block.timestamp,
+                        'transactions': block.transactions,
+                        'previous_hash': block.previous_hash,
+                        'nonce': block.nonce,
+                        'stake': block.stake
+                    }
+                    chain_data.append(block_data)
+                json.dump(chain_data, file, indent=4)
+        except Exception as e:
+            print(f"Error saving blockchain to file: {e}")
+
+    def load_chain_from_file(self):
+        try:
+            if os.path.exists(os.path.join(self.data_directory, 'blockchain.json')):
+                with open(os.path.join(self.data_directory, 'blockchain.json'), 'r') as file:
+                    chain_data = json.load(file)
+                    for block_data in chain_data:
+                        block = Block(block_data['index'], block_data['timestamp'], block_data['transactions'], block_data['previous_hash'])
+                        block.nonce = block_data['nonce']
+                        block.stake = block_data['stake']
+                        self.chain.append(block)
+        except Exception as e:
+            print(f"Error loading blockchain from file: {e}")
 
 class Stakeholder:
     def __init__(self, name):
@@ -133,17 +189,3 @@ if __name__ == "__main__":
     # Mine pending transactions using DPoS
     validator = alsania_chain.proof_of_stake_selection(alsania_chain.chain[-1])
     alsania_chain.mine_pending_transactions(validator)
-
-    # Create a sidechain for additional transactions
-    sidechain = alsania_chain.create_sidechain()
-
-    # Shard transactions to distribute load
-    alsania_chain.shard_transactions()
-
-    # Check the main blockchain
-    for block in alsania_chain.chain:
-        print(f"Index: {block.index}, Hash: {block.hash_block()}, Previous Hash: {block.previous_hash}, Stake: {block.stake}, Transactions: {block.transactions}")
-
-    # Check the sidechain
-    for block in sidechain.chain:
-        print(f"Sidechain - Index: {block.index}, Hash: {block.hash_block()}, Previous Hash: {block.previous_hash}, Stake: {block.stake}, Transactions: {block.transactions}")
