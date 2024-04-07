@@ -2,32 +2,363 @@ import hashlib
 import time
 import random
 import json
-import os
 import socket
 import threading
+import pickle
+import rsa
 from collections import defaultdict
-from cryptography.fernet import Fernet
 
 class BlockchainError(Exception):
+    """Base class for blockchain-related errors."""
     pass
 
 class ValidationFailedError(BlockchainError):
-    def __init__(self, message="Validation failed."):
-        super().__init__(message)
+    """Exception raised for validation failures."""
+    pass
 
 class FileIOError(BlockchainError):
-    def __init__(self, message="File I/O error occurred."):
-        super().__init__(message)
+    """Exception raised for file I/O errors."""
+    pass
 
 class EncryptionError(BlockchainError):
-    def __init__(self, message="Encryption error occurred."):
-        super().__init__(message)
+    """Exception raised for encryption errors."""
+    pass
 
 class DecryptionError(BlockchainError):
-    def __init__(self, message="Decryption error occurred."):
-        super().__init__(message)
+    """Exception raised for decryption errors."""
+    pass
+
+class ProofOfWork:
+    """Class for Proof of Work consensus mechanism."""
+    def __init__(self, difficulty):
+        self.difficulty = difficulty
+
+    def mine_block(self, block):
+        """Mine a block until a valid hash is found."""
+        while not block.hash.startswith('0' * self.difficulty):
+            block.nonce += 1
+            block.hash = block.hash_block()
+        return block
+
+class DelegatedProofOfStake:
+    """Class for Delegated Proof of Stake consensus mechanism."""
+    def __init__(self, stakeholders):
+        self.stakeholders = stakeholders
+        self.delegates = []
+
+    def vote_for_delegates(self):
+        """Logic for stakeholders to vote for delegates."""
+        # Placeholder - Implement logic for stakeholders to vote for delegates based on their stakes
+        pass
+
+    def select_delegates(self):
+        """Logic for selecting delegates based on stakeholder votes."""
+        # Placeholder - Implement logic for selecting delegates based on stakeholder votes
+        pass
+
+class SmartContractError(BlockchainError):
+    """Exception raised for errors related to smart contracts."""
+    pass
+
+class SmartContract:
+    """Class representing a smart contract."""
+    def __init__(self, contract_id, owner):
+        self.contract_id = contract_id
+        self.owner = owner
+        self.code = None
+        self.state = defaultdict(dict)  # Persistent storage for contract state
+        self.events = []
+        self.permissions = defaultdict(set)
+        self.event_subscribers = defaultdict(list)  # Mapping of event names to subscriber addresses
+        self.upgradeable = False  # Flag indicating whether the contract is upgradeable
+        self.allowed_execution_times = None  # Time-based access control
+        self.gas_limit = None
+        self.gas_fee = None
+
+    def deploy(self, code):
+        """Deploy the smart contract."""
+        if self.code is not None:
+            raise SmartContractError("Contract already deployed")
+        self.code = code
+        # Additional deployment logic can be added here
+        
+    def execute_method(self, method_name, *args, sender=None):
+        """Execute a method defined in the smart contract."""
+        if method_name not in self.code:
+            raise SmartContractError("Method does not exist in the contract")
+
+        if sender is not None and not self.check_permission(method_name, sender):
+            raise SmartContractError("Permission denied")
+
+        if self.allowed_execution_times is not None and not self.check_execution_time():
+            raise SmartContractError("Method cannot be executed at this time")
+
+        method = self.code[method_name]
+        if method["type"] == "function":
+            return self._execute_function(method_name, *args)
+        elif method["type"] == "view":
+            return self._execute_view_method(method_name, *args)
+        else:
+            raise SmartContractError("Invalid method type")
+
+    def emit_event(self, event_name, *args):
+        """Emit an event from the smart contract."""
+        event = {
+            'name': event_name,
+            'args': args,
+            'timestamp': time.time()
+        }
+        self.events.append(event)
+        self.notify_subscribers(event_name, *args)
+
+    def notify_subscribers(self, event_name, *args):
+        """Notify subscribers of an event."""
+        for subscriber_address in self.event_subscribers[event_name]:
+            # Placeholder - Implement logic to notify subscribers (e.g., send a message, trigger a callback)
+            pass
+
+    def subscribe_to_event(self, event_name, subscriber_address):
+        """Subscribe to an event."""
+        self.event_subscribers[event_name].append(subscriber_address)
+
+    def _execute_function(self, method_name, *args):
+        """Execute a function type method."""
+        method = self.code[method_name]
+        if len(args) != len(method["params"]):
+            raise SmartContractError("Incorrect number of arguments for method")
+        if self.gas_limit is not None and method["gas_cost"] > self.gas_limit:
+            raise SmartContractError("Gas limit exceeded")
+        result = method["function"](*args, contract=self)  # Pass contract reference for state access
+        self.emit_event(method_name, *args)
+        return result
+
+    def _execute_view_method(self, method_name, *args):
+        """Execute a view type method."""
+        method = self.code[method_name]
+        if len(args) != len(method["params"]):
+            raise SmartContractError("Incorrect number of arguments for method")
+        if self.gas_limit is not None and method["gas_cost"] > self.gas_limit:
+            raise SmartContractError("Gas limit exceeded")
+        return method["function"](*args, contract=self)  # Pass contract reference for state access
+
+    def grant_permission(self, method_name, address):
+        """Grant permission to an address."""
+        self.permissions[method_name].add(address)
+
+    def revoke_permission(self, method_name, address):
+        """Revoke permission from an address."""
+        if method_name in self.permissions:
+            self.permissions[method_name].remove(address)
+
+    def check_permission(self, method_name, address):
+        """Check if an address has permission for a method."""
+        if method_name not in self.permissions:
+            return True
+        return address in self.permissions[method_name]
+
+    def check_execution_time(self):
+        """Check if the method can be executed at the current time."""
+        # Placeholder - Implement time-based access control logic here
+        return True  # For simplicity, always return True for now
+
+    # Methods for various functionalities of smart contracts (placeholders)
+    # Methods like tokenization, fundraising platforms, decentralized systems, etc. can be implemented here
+    # Placeholder methods provided for demonstration purposes
+
+class AlsaniaBlockchain:
+    """Class representing the Alsania blockchain."""
+    def __init__(self, host, port, redundancy_factor, difficulty=2):
+        self.chain = []
+        self.load_chain_from_disk()
+        if not self.chain:
+            self.create_genesis_block()
+        self.difficulty = difficulty
+        self.pending_transactions = []
+        self.mining_reward = 10
+        self.node = Node(host, port)
+        self.node.start()
+        self.stakeholders = []
+        self.validators = []
+        self.consensus_threshold = 0.5
+        self.chain_replicas = defaultdict(list)
+        self.redundancy_factor = redundancy_factor
+        self.validated_blocks = set()
+        self.contracts = {}
+        self.consensus_mechanism = ProofOfWork(self.difficulty)
+        # self.consensus_mechanism = DelegatedProofOfStake(self.stakeholders)
+
+    def add_stakeholder(self, stakeholder):
+        """Add a stakeholder to the blockchain."""
+        self.stakeholders.append(stakeholder)
+
+    def create_genesis_block(self):
+        """Create the genesis block of the blockchain."""
+        genesis_block = Block(0, time.time(), [], "0")
+        genesis_block.stake = 100
+        self.chain.append(genesis_block)
+
+    def mine_block(self, max_transactions_per_block=10):
+        """Mine a block with pending transactions."""
+        if not self.pending_transactions:
+            return False
+        
+        previous_block = self.chain[-1]
+        selected_transactions = self.pending_transactions[:max_transactions_per_block]
+        new_block = self._create_block(previous_block, selected_transactions)
+        new_block = self.consensus_mechanism.mine_block(new_block)  # Mine the block
+        self.broadcast_mined_block(new_block)
+        self.pending_transactions = self.pending_transactions[max_transactions_per_block:]
+        return new_block
+
+    def mine_blocks_parallel(self, num_blocks):
+        """Mine multiple blocks in parallel."""
+        threads = []
+        for _ in range(num_blocks):
+            thread = threading.Thread(target=self.mine_block)
+            thread.start()
+            threads.append(thread)
+        
+        for thread in threads:
+            thread.join()
+
+    def _create_block(self, previous_block, transactions):
+        """Create a new block."""
+        new_block = Block(
+            index=previous_block.index + 1,
+            timestamp=time.time(),
+            transactions=transactions,
+            previous_hash=previous_block.hash_block()
+        )
+        
+        new_block.validators = self.select_validators()
+        # new_block = self.proof_of_stake(new_block)
+        
+        self.add_block_to_replicas(new_block)
+        
+        return new_block
+
+    # More methods for block creation, validation, consensus, etc. can be added here
+    # Placeholder methods provided for demonstration purposes
+
+    def proof_of_stake(self, block):
+        """Implement proof of stake consensus mechanism."""
+        if not self.validate_block(block):
+            return None
+        
+        for _ in range(1000000):
+            block.nonce = random.randint(0, 1000000)
+            if self.valid_proof(block):
+                return block
+        
+        return None
+
+    def add_block_to_replicas(self, block):
+        """Add block replicas to maintain redundancy."""
+        for _ in range(self.redundancy_factor):
+            self.chain_replicas[block.index].append(block)
+
+    def broadcast_mined_block(self, block):
+        """Broadcast a mined block to peers."""
+        for peer in self.node.peers:
+            peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            peer_socket.connect(peer)
+            peer_socket.sendall(pickle.dumps(block))
+            peer_socket.close()
+
+    def validate_block(self, block):
+        """Validate the integrity of a block."""
+        if block.hash_block() != block.hash:
+            return False
+        
+        for tx in block.transactions:
+            if not self.validate_transaction(tx):
+                return False
+        
+        return True
+
+    def valid_proof(self, block):
+        """Check if a block's hash satisfies the proof of work."""
+        return block.hash.startswith('0' * self.difficulty)
+
+    def select_validators(self):
+        """Select validators for a block."""
+        # Randomized selection of validators weighted by stake
+        selected_validators = random.choices(self.stakeholders, k=len(self.stakeholders))
+        return selected_validators
+
+    def load_chain_from_disk(self):
+        """Load blockchain data from disk."""
+        # Placeholder - Implement loading blockchain data from disk
+        pass
+
+    def save_chain_to_disk(self):
+        """Save blockchain data to disk."""
+        # Placeholder - Implement saving blockchain data to disk
+        pass
+
+    def validate_transaction(self, transaction):
+        """Validate a transaction."""
+        # Implement more sophisticated transaction validation
+        return True
+
+    def process_transaction(self, transaction):
+        """Process a transaction."""
+        if not self.validate_transaction(transaction):
+            return False
+        
+        return True
+
+class Node:
+    """Class representing a node in the blockchain network."""
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.peers = []
+        self.backup_peers = []
+
+    def start(self):
+        """Start the node."""
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.bind((self.host, self.port))
+        server_socket.listen()
+        
+        while True:
+            conn, addr = server_socket.accept()
+            threading.Thread(target=self.handle_peer_connection, args=(conn,)).start()
+
+    def handle_peer_connection(self, conn):
+        """Handle incoming peer connections."""
+        pass
+
+    # More methods for handling peer connections, communication, etc. can be added here
+    # Placeholder methods provided for demonstration purposes
+
+class Stakeholder:
+    """Class representing a stakeholder."""
+    def __init__(self, name):
+        self.name = name
+        self.stake = 0
+        self.private_key = rsa.newkeys(512)[1]
+
+class Validator:
+    """Class representing a validator."""
+    def __init__(self, name):
+        self.name = name
+        self.public_key = rsa.newkeys(512)[0]
+
+class Transaction:
+    """Class representing a transaction."""
+    def __init__(self, sender, recipient, amount, fee, contract=None, method=None, args=None):
+        self.sender = sender
+        self.recipient = recipient
+        self.amount = amount
+        self.fee = fee
+        self.contract = contract
+        self.method = method
+        self.args = args
 
 class Block:
+    """Class representing a block in the blockchain."""
     def __init__(self, index, timestamp, transactions, previous_hash):
         self.index = index
         self.timestamp = timestamp
@@ -35,152 +366,10 @@ class Block:
         self.previous_hash = previous_hash
         self.nonce = 0
         self.stake = 0
+        self.validators = []
+        self.hash = self.hash_block()
 
     def hash_block(self):
-        block_content = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce) + str(self.stake)
-        return hashlib.sha256(block_content.encode()).hexdigest()
-
-class Node:
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.peers = []
-
-    def start(self):
-        server_thread = threading.Thread(target=self.run_server)
-        server_thread.start()
-
-    def run_server(self):
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((self.host, self.port))
-        server_socket.listen(5)
-        print(f"Server started on {self.host}:{self.port}")
-
-        while True:
-            client_socket, client_address = server_socket.accept()
-            print(f"Connection from {client_address}")
-            client_thread = threading.Thread(target=self.handle_client, args=(client_socket,))
-            client_thread.start()
-
-    def handle_client(self, client_socket):
-        message = ""
-        while True:
-            data = client_socket.recv(1024)
-            if not data:
-                break
-            message += data.decode()
-        print(f"Received message: {message}")
-        # Process the received message
-        # Example: Broadcast the message to other peers
-        self.broadcast(message)
-        client_socket.close()
-
-    def add_peer(self, peer):
-        self.peers.append(peer)
-
-    def broadcast(self, message):
-        for peer in self.peers:
-            try:
-                peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                peer_socket.connect(peer)
-                peer_socket.sendall(message.encode())
-                peer_socket.close()
-            except Exception as e:
-                print(f"Error broadcasting message to {peer}: {e}")
-
-class AlsaniaBlockchain:
-    def __init__(self, host, port):
-        self.chain = []
-        self.load_chain_from_disk()  # Load blockchain data from disk during initialization
-        self.create_genesis_block()
-        self.difficulty = 2
-        self.pending_transactions = []
-        self.mining_reward = 10
-        self.node = Node(host, port)
-        self.node.start()
-
-    def create_genesis_block(self):
-        genesis_block = Block(0, time.time(), [], "0")
-        genesis_block.stake = 100
-        self.chain.append(genesis_block)
-
-    def add_block(self, new_block):
-        try:
-            new_block.previous_hash = self.chain[-1].hash_block()
-            new_block.index = len(self.chain)
-            self.chain.append(new_block)
-            self.save_chain_to_disk()  # Save blockchain data to disk after adding new block
-        except IndexError as e:
-            raise ValidationFailedError("Genesis block is missing. Cannot add new block.") from e
-
-    def load_chain_from_disk(self, filename='alsania_chain.json'):
-        try:
-            with open(filename, 'r') as file:
-                chain_data = json.load(file)
-                for block_data in chain_data:
-                    block = Block(
-                        block_data['index'],
-                        block_data['timestamp'],
-                        block_data['transactions'],
-                        block_data['previous_hash']
-                    )
-                    block.nonce = block_data['nonce']
-                    block.stake = block_data['stake']
-                    self.chain.append(block)
-        except FileNotFoundError:
-            print("Blockchain file not found. Creating new chain.")
-        except Exception as e:
-            print(f"Error loading blockchain data from disk: {e}")
-
-    def save_chain_to_disk(self, filename='alsania_chain.json'):
-        try:
-            with open(filename, 'w') as file:
-                chain_data = []
-                for block in self.chain:
-                    block_data = {
-                        'index': block.index,
-                        'timestamp': block.timestamp,
-                        'transactions': block.transactions,
-                        'previous_hash': block.previous_hash,
-                        'nonce': block.nonce,
-                        'stake': block.stake
-                    }
-                    chain_data.append(block_data)
-                json.dump(chain_data, file, indent=4)
-            print("Blockchain data saved to disk successfully.")
-        except Exception as e:
-            print(f"Error saving blockchain data to disk: {e}")
-
-    # Other methods remain unchanged...
-
-class Stakeholder:
-    def __init__(self, name):
-        self.name = name
-        self.stake = 0
-
-class Validator:
-    def __init__(self, name):
-        self.name = name
-
-    def vote(self, block):
-        return True
-
-class Transaction:
-    def __init__(self, sender, recipient, amount, fee):
-        self.sender = sender
-        self.recipient = recipient
-        self.amount = amount
-        self.fee = fee
-
-# Example usage:
-# Create and start the blockchain node
-blockchain_node = AlsaniaBlockchain("localhost", 5000)
-
-# Add peer nodes
-blockchain_node.add_peer(("localhost", 5001))
-blockchain_node.add_peer(("localhost", 5002))
-
-# When a new block is added, broadcast it to peers
-new_block = Block(index, timestamp, transactions, previous_hash)
-blockchain_node.add_block(new_block)
-blockchain_node.broadcast_block(new_block)
+        """Calculate the hash of the block."""
+        block_string = json.dumps(self.__dict__, sort_keys=True)
+        return hashlib.sha256(block_string.encode()).hexdigest()
