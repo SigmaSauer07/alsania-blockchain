@@ -177,6 +177,14 @@ class AlsaniaCoin:
         self.decimals = 18
         self.max_supply = 50000000
 
+    def distribute_reward(self, recipient, amount):
+        # Implement reward distribution logic
+        pass
+
+    def collect_fee(self, recipient, amount):
+        # Implement fee collection logic
+        pass
+
 class AlsaniaBlockchain:
     """Class representing the Alsania blockchain."""
     def __init__(self, host, port, redundancy_factor, difficulty=2):
@@ -333,6 +341,14 @@ class AlsaniaBlockchain:
         
         sender_stakeholder.balance -= transaction.amount + transaction.fee
         recipient_stakeholder.balance += transaction.amount
+
+        # Distribute reward to miner
+        miner_stakeholder = self.find_stakeholder(transaction.sender)  # Assuming sender is the miner
+        self.coin.distribute_reward(miner_stakeholder, self.mining_reward)
+
+        # Collect fee
+        self.coin.collect_fee(recipient_stakeholder, transaction.fee)
+
         return True
 
 class Node:
@@ -375,14 +391,11 @@ class Validator:
 
 class Transaction:
     """Class representing a transaction, including Alsania transactions."""
-    def __init__(self, sender, recipient, amount, fee, contract=None, method=None, args=None, coin=None):
+    def __init__(self, sender, recipient, amount, fee, coin=None):
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
         self.fee = fee
-        self.contract = contract
-        self.method = method
-        self.args = args
         self.coin = coin
 
 class Block:
@@ -401,4 +414,3 @@ class Block:
         """Calculate the hash of the block."""
         block_string = json.dumps(self.__dict__, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
-
