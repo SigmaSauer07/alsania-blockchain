@@ -47,6 +47,7 @@ class AlsaniaCoin:
         self.staking_enabled = True
         self.total_staked = 0
         self.transaction_fee = 1  # Transaction fee for each transfer
+        self.delegations = defaultdict(dict)  # Track stake delegations
 
     def distribute_reward(self, recipient, amount):
         """Distribute rewards to a recipient."""
@@ -124,6 +125,36 @@ class AlsaniaCoin:
         """Handle an event emitted by a smart contract."""
         # Placeholder implementation for event handling
         pass
+
+    def delegate_stake(self, delegator, validator, amount):
+        """Delegate stake from a delegator to a validator."""
+        if amount <= 0:
+            raise ValueError("Amount must be positive")
+        if self.balances[delegator] < amount:
+            raise InsufficientBalanceError("Insufficient balance for delegation")
+        
+        # Update delegation record
+        self.delegations[validator][delegator] += amount
+        
+        # Update validator's total staked amount
+        self.total_staked += amount
+        self.balances[validator] += amount
+
+    def revoke_delegation(self, delegator, validator):
+        """Revoke stake delegation from a validator."""
+        amount = self.delegations[validator].pop(delegator, 0)
+        if amount > 0:
+            # Update validator's total staked amount
+            self.total_staked -= amount
+            self.balances[validator] -= amount
+
+    def get_delegated_stake(self, validator):
+        """Get the total delegated stake for a validator."""
+        return sum(self.delegations[validator].values())
+
+    def get_delegators(self, validator):
+        """Get the list of delegators and their delegated stakes for a validator."""
+        return self.delegations[validator].items()
 
 class ProofOfWork:
     """Class representing the proof-of-work mechanism."""
@@ -439,68 +470,9 @@ class FullNode(AlsaniaBlockchain):
 
             while True:
                 client_socket, client_address = server_socket.accept()
-                print(f"Incoming connection from {client_address}")
-                client_thread = threading.Thread(target=self.handle_client_request, args=(client_socket,))
-                client_thread.start()
-
-    def mine_block_parallel(self, num_blocks):
-        """Mine multiple blocks in parallel."""
-        with ThreadPoolExecutor(max_workers=num_blocks) as executor:
-            for _ in range(num_blocks):
-                executor.submit(self.mine_block)
-
-class Node:
-    """Class representing a node in the blockchain network."""
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-
-    def start(self):
-        """Start the node."""
-        server_thread = threading.Thread(target=self.run_server)
-        server_thread.start()
-
-    def stop(self):
-        """Stop the node."""
-        pass
-
-    def run_server(self):
-        """Start listening for incoming connections."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-            server_socket.bind((self.host, self.port))
-            server_socket.listen()
-
-            print(f"Node listening for incoming connections on {self.host}:{self.port}...")
-
-            while True:
-                client_socket, client_address = server_socket.accept()
-                print(f"Incoming connection from {client_address}")
-                client_thread = threading.Thread(target=self.handle_client, args=(client_socket,))
-                client_thread.start()
-
-    def handle_client(self, client_socket):
-        """Handle incoming messages from a connected client."""
-        try:
-            while True:
-                message = client_socket.recv(4096)
-                if not message:
-                    break
-                print(f"Received message from {client_socket.getpeername()}: {message.decode()}")
-                # Process the received message here
-        except Exception as e:
-            print(f"Error handling client connection: {e}")
-        finally:
-            client_socket.close()
-
-    def send_message(self, peer_host, peer_port, message):
-        """Send a message to a peer."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-            try:
-                client_socket.connect((peer_host, peer_port))
-                client_socket.sendall(pickle.dumps(message))
-                print(f"Message sent to {peer_host}:{peer_port}")
-            except Exception as e:
-                print(f"Error sending message to {peer_host}:{peer_port}: {e}")
+                print(f"Connection established with {client_address}")
+                client_handler = threading.Thread(target=self.handle_client_request, args=(client_socket,))
+                client_handler.start()
 
 class Block:
     """Class representing a block in the blockchain."""
@@ -511,14 +483,24 @@ class Block:
         self.previous_hash = previous_hash
         self.nonce = 0
         self.hash = self.hash_block()
-        self.miner_address = "miner"  # Placeholder for miner's address
-        self.contract_transactions = []  # List of transactions involving smart contracts
+        self.miner_address = None
+        self.stake = None
 
     def hash_block(self):
         """Generate the hash of the block."""
-        block_string = f"{self.index}{self.timestamp}{self.transactions}{self.previous_hash}{self.nonce}"
+        block_string = json.dumps(self.__dict__, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
 
+class Node:
+    """Class representing a network node."""
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+
+    def start(self):
+        """Start the node."""
+        pass  # Placeholder for node startup actions
+
 if __name__ == "__main__":
-    full_node = FullNode('localhost', 5000, 3, 'http://localhost:8545')
+    full_node = FullNode('localhost', 8888, 3, 'http://localhost:8545')
     full_node.run_server()
