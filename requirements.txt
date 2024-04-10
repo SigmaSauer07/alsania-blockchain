@@ -1,0 +1,3 @@
+ipfshttpclient==0.10.0
+ethereum==3.0.0
+web3==5.26.0
