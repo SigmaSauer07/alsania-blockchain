@@ -7,8 +7,12 @@ import threading
 import pickle
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from ipfshttpclient import connect  # Import IPFS client
 from ethereum import utils, abi
 from web3 import Web3
+
+# Connect to IPFS daemon
+ipfs_client = connect()
 
 class BlockchainError(Exception):
     """Base class for blockchain-related errors."""
@@ -240,7 +244,7 @@ class AlsaniaBlockchain:
     def __init__(self, host, port, redundancy_factor, rpc_url, consensus_algorithm='ProofOfWork', difficulty=2):
         self.coin = AlsaniaCoin()
         self.chain = []
-        self.load_chain_from_disk()
+        self.load_chain_from_ipfs()  # Load blockchain from IPFS
         if not self.chain:
             self.create_genesis_block()
         self.difficulty = difficulty
@@ -303,8 +307,8 @@ class AlsaniaBlockchain:
             self.mining_reward /= 2  
             self.last_reward_halving_time = time.time()  
 
-        # Save blockchain data to disk
-        self.save_chain_to_disk()
+        # Save blockchain data to IPFS
+        self.save_chain_to_ipfs()
 
         return new_block
 
@@ -387,31 +391,32 @@ class AlsaniaBlockchain:
             raise ValidationFailedError("Block already added to chain")
         self.chain.append(block)
         self.validated_blocks.add(block.index)
-        self.save_chain_to_disk()  
+        self.save_chain_to_ipfs()  # Save blockchain to IPFS  
 
-    def load_chain_from_disk(self):
-        """Load the blockchain from disk."""
+    def load_chain_from_ipfs(self):
+        """Load the blockchain from IPFS."""
         try:
-            with open('blockchain.json', 'r') as file:
-                chain_data = json.load(file)
-                for block_data in chain_data:
-                    block = Block(block_data['index'], block_data['timestamp'], block_data['transactions'], block_data['previous_hash'])
-                    block.hash = block_data['hash']  
-                    self.chain.append(block)
-            print("Blockchain loaded from disk.")
-        except FileNotFoundError:
-            print("No blockchain data found on disk.")
+            data_bytes = ipfs_client.cat('/blockchain_data/blockchain.json')
+            chain_data = json.loads(data_bytes)
+            for block_data in chain_data:
+                block = Block(block_data['index'], block_data['timestamp'], block_data['transactions'], block_data['previous_hash'])
+                block.hash = block_data['hash']  
+                self.chain.append(block)
+            print("Blockchain loaded from IPFS.")
+        except Exception as e:
+            print("Error loading blockchain from IPFS:", e)
 
-    def save_chain_to_disk(self):
-        """Save the blockchain to disk."""
+    def save_chain_to_ipfs(self):
+        """Save the blockchain to IPFS."""
         chain_data = []
         for block in self.chain:
             chain_data.append(block.__dict__)
 
-        with open('blockchain.json', 'w') as file:
-            json.dump(chain_data, file, indent=4)
-        
-        print("Blockchain saved to disk.")
+        try:
+            ipfs_client.write('/blockchain_data/blockchain.json', json.dumps(chain_data))
+            print("Blockchain saved to IPFS.")
+        except Exception as e:
+            print("Error saving blockchain to IPFS:", e)
 
     def broadcast_node_info(self):
         """Periodically broadcast node information to discover peers."""
