@@ -7,6 +7,9 @@ import threading
 import pickle
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import utils
 from ipfshttpclient import connect  # Import IPFS client
 from ethereum import utils, abi
 from web3 import Web3
@@ -15,54 +18,88 @@ from web3 import Web3
 ipfs_client = connect()
 
 class BlockchainError(Exception):
-    """Base class for blockchain-related errors."""
+    """Base class for errors related to the blockchain."""
     pass
 
 class ValidationFailedError(BlockchainError):
-    """Error raised when block validation fails."""
+    """Error raised when something goes wrong during validation of a block."""
     pass
 
 class InsufficientBalanceError(BlockchainError):
-    """Error raised when there's insufficient balance for a transaction."""
+    """Error raised when someone tries to spend more coins than they have."""
     pass
 
 class InvalidTransactionError(BlockchainError):
-    """Error raised when a transaction is invalid."""
+    """Error raised when a transaction is not valid."""
     pass
 
 class DoubleSpendingError(BlockchainError):
-    """Error raised when a double spending attempt is detected."""
+    """Error raised when someone tries to spend the same coins twice."""
+    pass
+
+class AtomicSwapError(BlockchainError):
+    """Error raised when an atomic swap fails."""
     pass
 
 class AlsaniaCoin:
-    """Class representing the native coin of the Alsania blockchain."""
+    """A digital currency used within the Alsania blockchain."""
     def __init__(self):
+        # Basic details about the currency
         self.name = "Alsania"
         self.symbol = "ALS"
-        self.decimals = 18
+        self.decimals = 18  # Updated to reflect the smallest denomination called Embers
         self.total_supply = 50000000
+        
+        # Balances of users
         self.balances = defaultdict(int)
+        # Locked balances, for special cases
         self.locked_balances = defaultdict(int)
+        # Addresses of token holders
         self.token_holders = set()
+        # Voting power of users
         self.voting_power = defaultdict(int)
+        # Contract for governing the blockchain
         self.governance_contract = None
+        
+        # Features of the coin
         self.privacy_enabled = True
         self.smart_contract_integration = True
         self.staking_enabled = True
+        
+        # Staking details
         self.total_staked = 0
-        self.transaction_fee = 1  # Transaction fee for each transfer
+        self.transaction_fee = 1
         self.delegations = defaultdict(dict)  # Track stake delegations
+        self.pending_transactions = []  # Track pending transactions
+
+        # Define the new smallest denomination
+        self.embers_per_coin = 10 ** self.decimals
+
+        # Gas fee parameters
+        self.base_gas_fee = 1  # Initial base gas fee
+        self.dynamic_gas_fee_multiplier = 1.0  # Multiplier to adjust gas fee dynamically
+        
+        # External Oracle for price data
+        self.price_oracle = ExternalOracle()
+
+    def set_dynamic_gas_fee_multiplier(self, multiplier):
+        """Set the multiplier for dynamic gas fee adjustment."""
+        self.dynamic_gas_fee_multiplier = multiplier
+        
+    def calculate_gas_fee(self):
+        """Calculate the current gas fee based on the dynamic multiplier."""
+        return int(self.base_gas_fee * self.dynamic_gas_fee_multiplier)
 
     def distribute_reward(self, recipient, amount):
-        """Distribute rewards to a recipient."""
+        """Give coins to a recipient as a reward."""
         self._transfer(None, recipient, amount)
 
     def collect_fee(self, recipient, amount):
-        """Collect fees from a recipient."""
+        """Take coins from a recipient as a fee."""
         self._transfer(recipient, None, amount)
 
     def transfer(self, sender, recipient, amount, private_key=None):
-        """Transfer coins between addresses."""
+        """Transfer coins between two users."""
         if not isinstance(sender, str) or not isinstance(recipient, str) or not isinstance(amount, int):
             raise ValueError("Invalid input types")
         if amount <= 0:
@@ -70,14 +107,15 @@ class AlsaniaCoin:
         if self.balances[sender] < amount:
             raise InsufficientBalanceError("Insufficient balance")
         
-        fee = self.transaction_fee  # Include transaction fee
-        total_amount = amount + fee
+        # Include transaction fee
+        gas_fee = self.calculate_gas_fee()
+        total_amount = amount + gas_fee
 
         transaction = {
             'sender': sender,
             'recipient': recipient,
             'amount': amount,
-            'fee': fee,  # Add transaction fee to the transaction data
+            'fee': gas_fee,
             'timestamp': time.time()
         }
 
@@ -85,24 +123,28 @@ class AlsaniaCoin:
             signature = self.sign_transaction(transaction, private_key)
             transaction['signature'] = signature
         
+        # Generate proof to keep transaction private
+        zk_proof = generate_proof(sender, recipient, amount, private_key, self.balances[sender])
+        transaction['zk_proof'] = zk_proof
+
         if self.is_double_spending(sender, amount):
             raise DoubleSpendingError("Double spending detected")
 
         self._transfer(sender, recipient, total_amount)
 
     def _transfer(self, sender, recipient, amount):
-        """Internal method to transfer coins."""
+        """Update balances after transferring coins."""
         self.balances[sender] -= amount
         self.balances[recipient] += amount
 
     def sign_transaction(self, transaction, private_key):
-        """Sign a transaction with the sender's private key."""
+        """Create a digital signature for a transaction."""
         serialized_tx = json.dumps(transaction, sort_keys=True).encode()
         signature = hashlib.sha256(serialized_tx + private_key.encode()).hexdigest()
         return signature
 
     def verify_transaction_signature(self, transaction):
-        """Verify the signature of a transaction."""
+        """Check if a transaction's signature is valid."""
         sender_public_key = self.get_public_key(transaction['sender'])
         signature = transaction['signature']
         transaction_copy = transaction.copy()
@@ -111,27 +153,32 @@ class AlsaniaCoin:
         return hashlib.sha256(serialized_tx + sender_public_key.encode()).hexdigest() == signature
 
     def is_double_spending(self, sender, amount):
-        """Check if a transaction would result in double spending."""
+        """Check if a transaction tries to spend the same coins twice."""
+        # Check if the sender has already spent coins in previous transactions
+        for transaction in self.pending_transactions:
+            if transaction['sender'] == sender:
+                if transaction['amount'] == amount:
+                    return True
         return False
 
     def deploy_contract(self, sender, contract_code, gas_limit):
-        """Deploy a smart contract to the blockchain."""
-        # Placeholder implementation for contract deployment
-        contract_address = "0x1234567890"  # Dummy contract address
+        """Deploy a smart contract."""
+        # Placeholder implementation
+        contract_address = "0x1234567890"  # Dummy address
         return contract_address
 
     def invoke_contract_method(self, sender, contract_address, method, args, gas_limit):
-        """Invoke a method on a deployed smart contract."""
-        # Placeholder implementation for contract method invocation
+        """Call a method on a smart contract."""
+        # Placeholder implementation
         pass
 
     def handle_contract_event(self, event):
         """Handle an event emitted by a smart contract."""
-        # Placeholder implementation for event handling
+        # Placeholder implementation
         pass
 
     def delegate_stake(self, delegator, validator, amount):
-        """Delegate stake from a delegator to a validator."""
+        """Delegate stake from one user to another."""
         if amount <= 0:
             raise ValueError("Amount must be positive")
         if self.balances[delegator] < amount:
@@ -145,7 +192,7 @@ class AlsaniaCoin:
         self.balances[validator] += amount
 
     def revoke_delegation(self, delegator, validator):
-        """Revoke stake delegation from a validator."""
+        """Remove stake delegation from a validator."""
         amount = self.delegations[validator].pop(delegator, 0)
         if amount > 0:
             # Update validator's total staked amount
@@ -160,352 +207,246 @@ class AlsaniaCoin:
         """Get the list of delegators and their delegated stakes for a validator."""
         return self.delegations[validator].items()
 
+    def get_public_key(self, address):
+        """Get the public key associated with an address."""
+        # Placeholder implementation
+        return "PUBLIC_KEY"
+
+    def get_nonce(self, address):
+        """Get the nonce associated with an address."""
+        # Placeholder implementation
+        return "NONCE"
+
+    def get_price_of_crypto(self, crypto_symbol):
+        """Fetch the current price of a cryptocurrency from an external API."""
+        return self.price_oracle.get_price(crypto_symbol)
+
+    def log_event(self, event_name, **kwargs):
+        """Emit an event from the smart contract."""
+        event = {'name': event_name, 'data': kwargs}
+        # Placeholder implementation: Print event data for demonstration
+        print(f"Event: {event_name}, Data: {kwargs}")
+
 class ProofOfWork:
-    """Class representing the proof-of-work mechanism."""
+    """A method for validating and adding blocks to the blockchain."""
     def __init__(self, difficulty):
+        """Initialize the proof-of-work mechanism with a given difficulty level."""
         self.difficulty = difficulty
 
     def mine_block(self, block):
-        """Perform proof-of-work for the given block."""
+        """Try different values for the nonce until the block's hash has the required number of leading zeros."""
         while not self.is_valid_proof(block.hash, self.difficulty):
             block.nonce += 1
             block.hash = block.hash_block()
         return block
 
     def is_valid_proof(self, block_hash, difficulty):
-        """Check if the block hash satisfies the proof-of-work difficulty target."""
+        """Check if the hash of a block satisfies the difficulty requirements."""
         return block_hash.startswith('0' * difficulty)
 
 class ProofOfStake:
-    """Class representing the proof-of-stake mechanism."""
-    def __init__(self, blockchain):
-        self.blockchain = blockchain
+    """A method for validating and adding blocks to the blockchain based on stake."""
+    def __init__(self, coin):
+        """Initialize the proof-of-stake mechanism with the digital currency."""
+        self.coin = coin
 
-    def mine_block(self, block):
-        """Perform proof-of-stake for the given block."""
-        # Simple PoS mechanism: Probability of mining is proportional to stake
-        stake = self.blockchain.coin.balances[block.miner_address]
-        if random.random() < (stake / self.blockchain.total_staked):
-            return block
-        return None
+    def validate_block(self, block):
+        """Validate a block before adding it to the blockchain."""
+        # Placeholder implementation: Add validation logic based on stake
+        return True
 
-class PracticalByzantineFaultTolerance:
-    """Class representing the Practical Byzantine Fault Tolerance (PBFT) consensus."""
-    def __init__(self, blockchain):
-        self.blockchain = blockchain
+class ByzantineFaultTolerance:
+    """A method for achieving consensus in the presence of Byzantine faults."""
+    def __init__(self):
+        pass
 
-    def mine_block(self, block):
-        """Perform PBFT consensus for the given block."""
-        # Placeholder for PBFT implementation
-        # In PBFT, a multi-round voting process among validators would take place
-        return block  # For now, just return the block as is
+    def validate_block(self, block):
+        """Validate a block before adding it to the blockchain."""
+        # Placeholder implementation: Add validation logic for BFT consensus
+        return True
 
-class SmartContract:
-    """Class representing a smart contract in the blockchain."""
-    def __init__(self, code):
-        self.code = code
-        self.address = None
-
-    def deploy(self, blockchain, sender, gas_limit):
-        """Deploy the smart contract to the blockchain."""
-        self.address = blockchain.coin.deploy_contract(sender, self.code, gas_limit)
-        blockchain.contracts[self.address] = self
-
-    def invoke_method(self, blockchain, sender, method, args, gas_limit):
-        """Invoke a method on the smart contract."""
-        blockchain.coin.invoke_contract_method(sender, self.address, method, args, gas_limit)
-
-    def emit_event(self, event):
-        """Emit an event from the smart contract."""
-        pass  # Placeholder for emitting events
-
-class EVMIntegration:
-    """Class for integration with the Ethereum Virtual Machine (EVM)."""
-    def __init__(self, rpc_url):
-        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
-
-    def execute_contract(self, sender, sender_private_key, bytecode, gas_limit):
-        """Execute smart contract bytecode on the EVM."""
-        nonce = self.w3.eth.getTransactionCount(sender)
-        gas_price = self.w3.eth.gasPrice
-        transaction = {
-            'nonce': nonce,
-            'gasPrice': gas_price,
-            'gas': gas_limit,
-            'to': None,
-            'data': bytecode,
-        }
-        signed_txn = self.w3.eth.account.signTransaction(transaction, sender_private_key)
-        tx_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
-        return tx_hash.hex()
+class ExternalOracle:
+    """External oracle for fetching real-world data."""
+    def get_price(self, crypto_symbol):
+        """Fetch the current price of a cryptocurrency."""
+        # Placeholder implementation: Simulate fetching price data from an API
+        if crypto_symbol == "BTC":
+            return 60000  # Placeholder price for Bitcoin
+        elif crypto_symbol == "ETH":
+            return 2000  # Placeholder price for Ethereum
+        else:
+            return None
 
 class AlsaniaBlockchain:
-    """Class representing the Alsania blockchain."""
-    def __init__(self, host, port, redundancy_factor, rpc_url, consensus_algorithm='ProofOfWork', difficulty=2):
-        self.coin = AlsaniaCoin()
+    """A blockchain implementation based on the AlsaniaCoin."""
+    def __init__(self, coin, consensus):
+        """Initialize the blockchain with a specific digital currency and consensus mechanism."""
+        self.coin = coin
+        self.consensus = consensus
         self.chain = []
-        self.load_chain_from_ipfs()  # Load blockchain from IPFS
-        if not self.chain:
-            self.create_genesis_block()
-        self.difficulty = difficulty
         self.pending_transactions = []
-        self.node = Node(host, port)
-        self.node.start()
+        self.node = None
+        self.peers = []
         self.stakeholders = []
-        self.validators = []
-        self.consensus_threshold = 0.5
-        self.chain_replicas = defaultdict(list)
-        self.redundancy_factor = redundancy_factor
-        self.validated_blocks = set()
         self.contracts = {}
-        self.last_reward_halving_time = time.time()
-        self.mining_reward = 10
-        self.peers = set()  # Set to store peer addresses (host, port)
-        self.broadcast_period = 60  # Period for broadcasting node information (in seconds)
-        self.discovery_thread = threading.Thread(target=self.broadcast_node_info)
-        self.discovery_thread.daemon = True
-        self.discovery_thread.start()
-        self.evm_integration = EVMIntegration(rpc_url)
-        
-        # Initialize consensus algorithm
-        if consensus_algorithm == 'ProofOfWork':
-            self.consensus_mechanism = ProofOfWork(self.difficulty)
-        elif consensus_algorithm == 'ProofOfStake':
-            self.consensus_mechanism = ProofOfStake(self)
-        elif consensus_algorithm == 'PracticalByzantineFaultTolerance':
-            self.consensus_mechanism = PracticalByzantineFaultTolerance(self)
-        else:
-            raise ValueError("Invalid consensus algorithm")
-
-    def add_stakeholder(self, stakeholder):
-        """Add a stakeholder to the blockchain."""
-        self.stakeholders.append(stakeholder)
 
     def create_genesis_block(self):
         """Create the genesis block of the blockchain."""
-        genesis_block = Block(0, time.time(), [], "0")
-        genesis_block.stake = 100
+        genesis_block = Block(0, [], "0")
+        genesis_block.timestamp = time.time()
+        genesis_block.hash = genesis_block.hash_block()
         self.chain.append(genesis_block)
 
-    def mine_block(self, max_transactions_per_block=10):
-        """Mine a block with pending transactions."""
-        if not self.pending_transactions:
-            return False
-        
-        previous_block = self.chain[-1]
-        selected_transactions = self.pending_transactions[:max_transactions_per_block]
-        new_block = self._create_block(previous_block, selected_transactions)
-        
-        # Perform consensus algorithm to mine the block
-        new_block = self.consensus_mechanism.mine_block(new_block)
-        if new_block is None:
-            return False
-        
-        self.pending_transactions = self.pending_transactions[max_transactions_per_block:]
+    def add_node(self, host, port):
+        """Add a node to the blockchain network."""
+        self.node = Node(host, port)
 
-        if time.time() - self.last_reward_halving_time >= 2 * 365 * 24 * 60 * 60: 
-            self.mining_reward /= 2  
-            self.last_reward_halving_time = time.time()  
+    def add_peer(self, host, port):
+        """Add a peer node to the blockchain network."""
+        self.peers.append((host, port))
 
-        # Save blockchain data to IPFS
-        self.save_chain_to_ipfs()
+    def add_stakeholder(self, address):
+        """Add a stakeholder to the blockchain network."""
+        self.stakeholders.append(address)
 
-        return new_block
-
-    def _create_block(self, previous_block, transactions):
-        """Create a new block."""
-        block = Block(previous_block.index + 1, time.time(), transactions, previous_block.hash)
-        block.stake = self.calculate_stake(block)
-        return block
-
-    def calculate_stake(self, block):
-        """Calculate the stake for mining a block."""
-        return 1
-
-    def broadcast_mined_block(self, block):
-        """Broadcast a mined block to the network."""
-        for peer in self.peers:
-            self.send_block_to_peer(peer[0], peer[1], block)
-
-    def get_connected_peers(self):
-        """Retrieve a list of connected peers."""
-        return self.peers
-
-    def send_block_to_peer(self, host, port, block):
-        """Send a block to a peer in the network."""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((host, port))
-                s.sendall(pickle.dumps(block))
-                print(f"Block broadcasted to peer {host}:{port}")
-        except Exception as e:
-            print(f"Failed to broadcast block to peer {host}:{port}: {e}")
-
-    def get_contract_transaction_from_block(self, block):
-        """Retrieve contract transactions from a block."""
-        return block.contract_transactions
+    def create_transaction(self, sender, recipient, amount, private_key=None):
+        """Create a new transaction to be added to the blockchain."""
+        transaction = {
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount,
+            'timestamp': time.time()
+        }
+        if private_key:
+            signature = self.coin.sign_transaction(transaction, private_key)
+            transaction['signature'] = signature
+        self.pending_transactions.append(transaction)
+        return transaction
 
     def validate_block(self, block):
-        """Validate a block before adding it to the chain."""
-        if block.index == 0:
-            return True
-        
-        for tx in block.transactions:
-            if not self.validate_transaction(tx):
-                print("Transaction validation failed.")
-                return False
-        
-        if block.hash != block.hash_block():
-            print("Block integrity verification failed.")
-            return False
-        
-        return True
-
-    def validate_transaction(self, transaction):
-        """Validate a transaction."""
-        sender = transaction['sender']
-        recipient = transaction['recipient']
-        amount = transaction['amount']
-
-        # Check for double spending
-        if self.is_double_spending(sender, amount):
-            raise DoubleSpendingError("Double spending detected")
-
-        # Verify transaction signature
-        if not self.coin.verify_transaction_signature(transaction):
-            raise InvalidTransactionError("Invalid transaction signature")
-
-        # Check sender balance sufficiency
-        if self.coin.balances[sender] < amount:
-            raise InsufficientBalanceError("Insufficient balance")
-
-        return True
-
-    def is_double_spending(self, sender, amount):
-        """Check if a transaction would result in double spending."""
-        return False  
+        """Validate a block before adding it to the blockchain."""
+        return self.consensus.validate_block(block)
 
     def add_block_to_chain(self, block):
         """Add a validated block to the blockchain."""
-        if block.index in self.validated_blocks:
-            raise ValidationFailedError("Block already added to chain")
         self.chain.append(block)
-        self.validated_blocks.add(block.index)
-        self.save_chain_to_ipfs()  # Save blockchain to IPFS  
 
-    def load_chain_from_ipfs(self):
-        """Load the blockchain from IPFS."""
-        try:
-            data_bytes = ipfs_client.cat('/blockchain_data/blockchain.json')
-            chain_data = json.loads(data_bytes)
-            for block_data in chain_data:
-                block = Block(block_data['index'], block_data['timestamp'], block_data['transactions'], block_data['previous_hash'])
-                block.hash = block_data['hash']  
-                self.chain.append(block)
-            print("Blockchain loaded from IPFS.")
-        except Exception as e:
-            print("Error loading blockchain from IPFS:", e)
+    def send_block_to_peer(self, host, port, block):
+        """Send a block to a peer node."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            s.sendall(pickle.dumps(block))
 
-    def save_chain_to_ipfs(self):
-        """Save the blockchain to IPFS."""
-        chain_data = []
-        for block in self.chain:
-            chain_data.append(block.__dict__)
-
-        try:
-            ipfs_client.write('/blockchain_data/blockchain.json', json.dumps(chain_data))
-            print("Blockchain saved to IPFS.")
-        except Exception as e:
-            print("Error saving blockchain to IPFS:", e)
-
-    def broadcast_node_info(self):
-        """Periodically broadcast node information to discover peers."""
-        while True:
-            # Broadcast node information to peers
-            self.broadcast_to_peers({'host': self.node.host, 'port': self.node.port})
-            time.sleep(self.broadcast_period)
-
-    def broadcast_to_peers(self, message):
-        """Broadcast a message to all known peers."""
-        for peer in self.peers:
-            self.send_message(peer[0], peer[1], message)
-
-    def handle_peer_broadcast(self, peer_info):
-        """Handle broadcasted node information from peers."""
-        self.peers.add((peer_info['host'], peer_info['port']))
-
-    def connect_to_peers(self):
-        """Connect to known peers."""
-        for peer in self.peers:
-            # Connect to peer and perform handshake
-            pass
-
-    def run(self):
-        """Start the blockchain node."""
-        self.node.start()
-        self.connect_to_peers()
-        # Other initialization code
-
-class FullNode(AlsaniaBlockchain):
-    """Class representing a full node in the blockchain network."""
-    def __init__(self, host, port, redundancy_factor, rpc_url, consensus_algorithm='ProofOfWork', difficulty=2):
-        super().__init__(host, port, redundancy_factor, rpc_url, consensus_algorithm, difficulty)
-
-    def handle_client_request(self, client_socket):
-        """Handle incoming client requests."""
-        try:
-            while True:
-                message = client_socket.recv(4096)
-                if not message:
-                    break
-                print(f"Received message from {client_socket.getpeername()}: {message.decode()}")
-                # Process the received message here, including smart contract interactions
-        except Exception as e:
-            print(f"Error handling client request: {e}")
-        finally:
-            client_socket.close()
-
-    def run_server(self):
-        """Start listening for incoming connections."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-            server_socket.bind((self.node.host, self.node.port))
-            server_socket.listen()
-
-            print(f"Full Node listening for incoming connections on {self.node.host}:{self.node.port}...")
-
-            while True:
-                client_socket, client_address = server_socket.accept()
-                print(f"Connection established with {client_address}")
-                client_handler = threading.Thread(target=self.handle_client_request, args=(client_socket,))
-                client_handler.start()
+    def receive_block_from_peer(self, conn):
+        """Receive a block from a peer node."""
+        with conn:
+            data = conn.recv(4096)
+            return pickle.loads(data)
 
 class Block:
-    """Class representing a block in the blockchain."""
-    def __init__(self, index, timestamp, transactions, previous_hash):
+    """A block within the blockchain."""
+    def __init__(self, index, transactions, previous_hash):
+        """Initialize the block with its index, transactions, and the hash of the previous block."""
         self.index = index
-        self.timestamp = timestamp
         self.transactions = transactions
+        self.timestamp = time.time()
         self.previous_hash = previous_hash
         self.nonce = 0
         self.hash = self.hash_block()
-        self.miner_address = None
-        self.stake = None
 
     def hash_block(self):
-        """Generate the hash of the block."""
-        block_string = json.dumps(self.__dict__, sort_keys=True)
-        return hashlib.sha256(block_string.encode()).hexdigest()
+        """Calculate the hash of the block."""
+        block_header = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce)
+        return hashlib.sha256(block_header.encode()).hexdigest()
 
 class Node:
-    """Class representing a network node."""
+    """A node within the blockchain network."""
     def __init__(self, host, port):
+        """Initialize the node with its host address and port number."""
         self.host = host
         self.port = port
 
-    def start(self):
-        """Start the node."""
-        pass  # Placeholder for node startup actions
+def generate_proof(sender, recipient, amount, private_key, sender_balance):
+    """
+    Generate a zero-knowledge proof for a transaction to maintain privacy.
+    """
+    # Concatenate relevant transaction data into a single string
+    data = f"{sender}{recipient}{amount}{sender_balance}".encode()
+
+    # Generate a hash of the concatenated data
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(data)
+    hashed_data = digest.finalize()
+
+    # Sign the hashed data using the sender's private key
+    signature = private_key.sign(hashed_data, utils.Prehashed(hashes.SHA256()))
+
+    return signature
 
 if __name__ == "__main__":
-    full_node = FullNode('localhost', 8888, 3, 'http://localhost:8545')
-    full_node.run_server()
+    # Initialize the AlsaniaCoin
+    alsania_coin = AlsaniaCoin()
+
+    # Initialize the blockchain with PoS consensus
+    alsania_blockchain_pos = AlsaniaBlockchain(alsania_coin, ProofOfStake(alsania_coin))
+    alsania_blockchain_pos.create_genesis_block()
+
+    # Initialize the blockchain with BFT consensus
+    alsania_blockchain_bft = AlsaniaBlockchain(alsania_coin, ByzantineFaultTolerance())
+    alsania_blockchain_bft.create_genesis_block()
+
+    # Initialize the node and peers for PoS blockchain
+    alsania_blockchain_pos.add_node("localhost", 5000)
+    alsania_blockchain_pos.add_peer("localhost", 5001)
+    alsania_blockchain_pos.add_peer("localhost", 5002)
+
+    # Initialize stakeholders for PoS blockchain
+    alsania_blockchain_pos.add_stakeholder("0x1234567890abcdef")
+    alsania_blockchain_pos.add_stakeholder("0xabcdef1234567890")
+
+    # Initialize the node and peers for BFT blockchain
+    alsania_blockchain_bft.add_node("localhost", 6000)
+    alsania_blockchain_bft.add_peer("localhost", 6001)
+    alsania_blockchain_bft.add_peer("localhost", 6002)
+
+    # Create transactions for PoS blockchain
+    transaction1_pos = alsania_blockchain_pos.create_transaction("0x1234567890abcdef", "0xabcdef1234567890", 100)
+    transaction2_pos = alsania_blockchain_pos.create_transaction("0xabcdef1234567890", "0x1234567890abcdef", 50)
+
+    # Create transactions for BFT blockchain
+    transaction1_bft = alsania_blockchain_bft.create_transaction("0x1234567890abcdef", "0xabcdef1234567890", 100)
+    transaction2_bft = alsania_blockchain_bft.create_transaction("0xabcdef1234567890", "0x1234567890abcdef", 50)
+
+    # Validate transactions for PoS blockchain
+    try:
+        alsania_blockchain_pos.validate_block(Block(1, [transaction1_pos, transaction2_pos], alsania_blockchain_pos.chain[-1].hash))
+    except ValidationFailedError as e:
+        print(f"Validation failed (PoS): {e}")
+    else:
+        print("Transactions are valid (PoS)")
+
+    # Validate transactions for BFT blockchain
+    try:
+        alsania_blockchain_bft.validate_block(Block(1, [transaction1_bft, transaction2_bft], alsania_blockchain_bft.chain[-1].hash))
+    except ValidationFailedError as e:
+        print(f"Validation failed (BFT): {e}")
+    else:
+        print("Transactions are valid (BFT)")
+
+    # Mine a new block for PoS blockchain
+    new_block_pos = Block(1, [transaction1_pos, transaction2_pos], alsania_blockchain_pos.chain[-1].hash)
+    mined_block_pos = alsania_blockchain_pos.consensus.mine_block(new_block_pos)
+    if mined_block_pos:
+        alsania_blockchain_pos.add_block_to_chain(mined_block_pos)
+        print("Block successfully mined (PoS)")
+    else:
+        print("Mining failed (PoS)")
+
+    # Mine a new block for BFT blockchain
+    new_block_bft = Block(1, [transaction1_bft, transaction2_bft], alsania_blockchain_bft.chain[-1].hash)
+    mined_block_bft = alsania_blockchain_bft.consensus.mine_block(new_block_bft)
+    if mined_block_bft:
+        alsania_blockchain_bft.add_block_to_chain(mined_block_bft)
+        print("Block successfully mined (BFT)")
+    else:
+        print("Mining failed (BFT)")
