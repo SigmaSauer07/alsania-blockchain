@@ -30,101 +30,72 @@ VALID_CHARACTERS = string.hexdigits[:-6]  # Valid characters for a private key (
 MAX_FUTURE_BLOCK_TIME = 60  # Maximum allowable future block time in seconds (e.g., 1 minute)
 
 class BlockchainError(Exception):
-    """Base class for errors related to the blockchain."""
     pass
 
 class ValidationFailedError(BlockchainError):
-    """Error raised when something goes wrong during validation of a block."""
     pass
 
 class InsufficientBalanceError(BlockchainError):
-    """Error raised when someone tries to spend more coins than they have."""
     pass
 
 class InvalidTransactionError(BlockchainError):
-    """Error raised when a transaction is not valid."""
     pass
 
 class DoubleSpendingError(BlockchainError):
-    """Error raised when someone tries to spend the same coins twice."""
     pass
 
 class AtomicSwapError(BlockchainError):
-    """Error raised when an atomic swap fails."""
+    pass
+
+class KYCVerificationError(BlockchainError):
     pass
 
 class AlsaniaCoin:
     """A digital currency used within the Alsania blockchain."""
     def __init__(self):
-        # Basic details about the currency
         self.name = "Alsania"
         self.symbol = "ALS"
         self.total_supply = 50000000
-        # Define the smallest denomination called Embers
         self.embers_per_coin = 10 ** 18
-        # Balances of users
         self.balances = defaultdict(int)
-        # Locked balances, for special cases
         self.locked_balances = defaultdict(int)
-        # Addresses of token holders
         self.token_holders = set()
-        # Voting power of users
         self.voting_power = defaultdict(int)
-        # Contract for governing the blockchain
         self.governance_contract = None
-        
-        # Features of the coin
         self.privacy_enabled = True
         self.smart_contract_integration = True
         self.staking_enabled = True
-        
-        # Staking details
         self.total_staked = 0
         self.transaction_fee = 1
         self.delegations = defaultdict(dict)  # Track stake delegations
         self.pending_transactions = []  # Track pending transactions
-
-        # Gas fee parameters
         self.base_gas_fee = 1  # Initial base gas fee
         self.dynamic_gas_fee_multiplier = 1.0  # Multiplier to adjust gas fee dynamically
-        
-        # External Oracle for price data
         self.price_oracle = ExternalOracle()
-
-        # KYC verified users
         self.kyc_verified_users = set()  # Initialize empty set for KYC verified users
-
-        # Initialize balances with initial amount for a specific address
         initial_address = "initial_address_here"  # Replace with the desired address
         initial_amount = 1000000  # Initial amount of AlsaniaCoins
         self.balances[initial_address] = initial_amount
         self.token_holders.add(initial_address)
 
     def set_dynamic_gas_fee_multiplier(self, multiplier):
-        """Set the multiplier for dynamic gas fee adjustment."""
         self.dynamic_gas_fee_multiplier = multiplier
         
     def calculate_gas_fee(self):
-        """Calculate the current gas fee based on the dynamic multiplier."""
         return int(self.base_gas_fee * self.dynamic_gas_fee_multiplier)
 
     def distribute_reward(self, recipient, amount):
-        """Give coins to a recipient as a reward."""
         self._transfer(None, recipient, amount)
 
     def collect_fee(self, recipient, amount):
-        """Take coins from a recipient as a fee."""
         self._transfer(recipient, None, amount)
 
     def verify_kyc(self, user_id):
-        """Verify KYC compliance for a user."""
-        # Check if user's KYC information is verified
         return user_id in self.kyc_verified_users
 
     def perform_kyc_verification(self, user_id, identity_documents):
         """Perform KYC verification for a user."""
         # Placeholder implementation: Verify user's identity documents
-        # Store KYC information securely
         self.kyc_verified_users.add(user_id)
 
     def transfer(self, sender, recipient, amount, private_key=None):
@@ -139,11 +110,8 @@ class AlsaniaCoin:
             raise InsufficientBalanceError("Insufficient balance")
         if recipient not in self.token_holders:
             raise ValueError("Recipient address is not a token holder")
-        
-        # Include transaction fee
         gas_fee = self.calculate_gas_fee()
         total_amount = amount + gas_fee
-
         transaction = {
             'sender': sender,
             'recipient': recipient,
@@ -151,18 +119,13 @@ class AlsaniaCoin:
             'fee': gas_fee,
             'timestamp': time.time()
         }
-
         if private_key:
             signature = self.sign_transaction(transaction, private_key)
             transaction['signature'] = signature
-        
-        # Generate proof to keep transaction private
         zk_proof = generate_proof(sender, recipient, amount, private_key, self.balances[sender])
         transaction['zk_proof'] = zk_proof
-
         if self.is_double_spending(sender, amount):
             raise DoubleSpendingError("Double spending detected")
-
         self._transfer(sender, recipient, total_amount)
 
     def _transfer(self, sender, recipient, amount):
@@ -198,7 +161,6 @@ class AlsaniaCoin:
 
     def is_double_spending(self, sender, amount):
         """Check if a transaction tries to spend the same coins twice."""
-        # Check if the sender has already spent coins in previous transactions
         for transaction in self.pending_transactions:
             if transaction['sender'] == sender:
                 if transaction['amount'] == amount:
@@ -212,26 +174,14 @@ class AlsaniaCoin:
 
     def deploy_contract(self, sender, contract_code, gas_limit):
         """Deploy a smart contract."""
-        # Compile contract code (assuming you have compiled contract code)
         compiled_contract = web3.eth.contract(abi=contract_code['abi'], bytecode=contract_code['bytecode'])
-
-        # Deploy contract
         tx_hash = compiled_contract.constructor().transact({'from': sender, 'gas': gas_limit})
-
-        # Wait for the transaction to be mined
         tx_receipt = web3.eth.waitForTransactionReceipt(tx_hash)
-
         return tx_receipt.contractAddress
 
     def invoke_contract_method(self, sender, contract_address, method, args, gas_limit):
-        """Call a method on a smart contract."""
-        # Create contract instance
         contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
-
-        # Execute contract method
         tx_hash = contract_instance.functions[method](*args).transact({'from': sender, 'gas': gas_limit})
-
-        # Wait for the transaction to be mined
         web3.eth.waitForTransactionReceipt(tx_hash)
 
     def handle_contract_event(self, event):
@@ -248,17 +198,13 @@ class AlsaniaCoin:
             raise ValueError("Validator is not a stakeholder")
         if self.balances[delegator] < amount:
             raise InsufficientBalanceError("Insufficient balance for delegation")
-        # Update validator's total staked amount
         self.total_staked += amount
         self.balances[validator] += amount
-        # Update delegation record
         try:
             self.delegations[validator][delegator] += amount
         except KeyError:
-            # If the validator does not have any existing delegations, create a new entry
             self.delegations[validator] = {delegator: amount}
         except Exception as e:
-            # Catch any unexpected exceptions and raise a BlockchainError
             raise BlockchainError(f"Stake delegation failed: {str(e)}")
     
     def revoke_delegation(self, delegator, validator):
@@ -268,7 +214,6 @@ class AlsaniaCoin:
         try:
             amount = self.delegations[validator].pop(delegator, 0)
             if amount > 0:
-                # Update validator's total staked amount
                 self.total_staked -= amount
                 self.balances[validator] -= amount
         except Exception as e:
@@ -301,7 +246,6 @@ class AlsaniaCoin:
 
     def get_nonce(self, address):
         """Get the nonce associated with an address."""
-        # Assuming you have a dictionary mapping addresses to their nonces
         return self.nonces.get(address, 0)
 
     def get_price_of_crypto(self, crypto_symbol):
@@ -651,8 +595,8 @@ class Node:
         self.private_key = self.blockchain.generate_private_key()
         self.public_key = self.blockchain.get_public_key(self.private_key)
     
-    @staticmethod
-    def generate_proof(sender, recipient, amount, private_key, sender_balance):
+@staticmethod
+def generate_proof(sender, recipient, amount, private_key, sender_balance):
         """
         Generate a zero-knowledge proof for a transaction to maintain privacy.
         Args:
@@ -682,3 +626,13 @@ class Node:
             raise ValueError("Invalid signature generated")
 
         return signature
+
+def safe_add(a, b):
+    if a + b < a:
+        raise OverflowError("Addition result out of range")
+    return a + b
+
+def safe_subtract(a, b):
+    if a - b > a:
+        raise OverflowError("Subtraction result out of range")
+    return a - b
