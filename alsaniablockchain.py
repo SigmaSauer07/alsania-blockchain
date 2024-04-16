@@ -164,15 +164,61 @@ class AlsaniaCoin:
         return signature
 
     def verify_transaction_signature(self, transaction):
-        """Check if a transaction's signature is valid."""
-        sender_public_key = self.get_public_key(transaction['sender'])
-        signature = transaction['signature']
-        transaction_copy = transaction.copy()
-        del transaction_copy['signature']
-        serialized_tx = json.dumps(transaction_copy, sort_keys=True).encode()
-        expected_signature = hashlib.sha256(serialized_tx + sender_public_key.encode()).hexdigest()
-        return signature == expected_signature
+        """Verify the digital signature of a transaction."""
+        signature = transaction.get('signature')
+        if not signature:
+            raise InvalidTransactionError("Transaction is not signed")
+        sender = transaction['sender']
+        expected_signature = self.sign_transaction(transaction, sender)
+        if signature != expected_signature:
+            raise InvalidTransactionError("Invalid transaction signature")
     
+    def add_pending_transaction(self, transaction):
+        """Add a transaction to the list of pending transactions."""
+        self.pending_transactions.append(transaction)
+
+    def process_pending_transactions(self):
+        """Process all pending transactions."""
+        for transaction in self.pending_transactions:
+            try:
+                self.verify_transaction_signature(transaction)
+                sender = transaction['sender']
+                recipient = transaction['recipient']
+                amount = transaction['amount']
+                gas_fee = transaction['fee']
+                zk_proof = transaction.get('zk_proof')
+                sender_balance = self.balances[sender]
+                if zk_proof:
+                    if not self.validate_proof(sender, recipient, amount, zk_proof, sender_balance):
+                        raise ValidationFailedError("Zero-knowledge proof validation failed")
+                self._transfer(sender, recipient, amount + gas_fee)
+                self.pending_transactions.remove(transaction)
+            except (InvalidTransactionError, ValidationFailedError):
+                continue
+
+    def validate_proof(self, sender, recipient, amount, zk_proof, sender_balance):
+        """
+        Validate the zero-knowledge proof of a transaction for privacy.
+        Args:
+            sender (str): The sender's address.
+            recipient (str): The recipient's address.
+            amount (int): The amount of the transaction.
+            zk_proof (bytes): The zero-knowledge proof.
+            sender_balance (int): The sender's balance.
+        Returns:
+            bool: True if the proof is valid, False otherwise.
+        """
+        data = f"{sender}{recipient}{amount}{sender_balance}".encode()
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(data)
+        hashed_data = digest.finalize()
+        pk = ec.derive_public_key(int(sender, 16), ec.SECP256R1(), default_backend())
+        try:
+            pk.verify(zk_proof, hashed_data, ec.ECDSA(hashes.SHA256()))
+            return True
+        except InvalidSignature:
+            return False
+
     def generate_private_key(self):
         """Generate a random private key."""
         return ''.join(secrets.choice(VALID_CHARACTERS) for _ in range(PRIVATE_KEY_LENGTH))
@@ -193,11 +239,10 @@ class AlsaniaCoin:
         return public_key_hex
 
     def is_double_spending(self, sender, amount):
-        """Check if a transaction tries to spend the same coins twice."""
+        """Check for double spending."""
         for transaction in self.pending_transactions:
-            if transaction['sender'] == sender:
-                if transaction['amount'] == amount:
-                    return True
+            if transaction['sender'] == sender and transaction['amount'] == amount:
+                return True
         return False
 
     def deploy_contract(self, sender, contract_code, gas_limit):
@@ -322,81 +367,62 @@ class AlsaniaCoin:
         receipt = web3.eth.waitForTransactionReceipt(tx_hash)
         print(f"Event emitted: {event_name}, Data: {event_data}, Transaction Hash: {receipt.transactionHash.hex()}")
 
-class ProofOfStake:
-    """A method for validating and adding blocks to the blockchain based on stake."""
-    def __init__(self, coin):
-        """Initialize the proof-of-stake mechanism with the digital currency."""
-        self.coin = coin
+class HybridConsensus:
+    def __init__(self):
+        self.validators = set()
+        self.consensus_type = 'Hybrid'
+        self.block_proposal_timeout = 10
+        self.consensus_threshold = 0.6
 
-    def validate_block(self, block):
-        """
-        Validate a block before adding it to the blockchain.        
-        Args:
-            block (Block): The block to validate.
-        Returns:
-            bool: True if the block is valid, False otherwise.
-        """
+    def propose_block(self):
+        """Propose a new block using the Proof of Stake consensus."""
+        return self._propose_block_pos()
+
+    def validate_block(self, block, blockchain):
+        """Validate a block before adding it to the blockchain."""
+        return self._validate_block_pos(block) and self._validate_block_bft(block, blockchain)
+    
+    def confirm_block(self, block):
+        """Confirm a block using BFT."""
+        return self.confirm_block_bft(block)
+
+    def fallback_to_pos(self):
+        """Fallback to PoS in case of BFT failure."""
+        print("Fallback to PoS mechanism")
+
+    def _propose_block_pos(self):
+        """Propose a new block using the Proof of Stake consensus."""
+        return self.coin.create_block()
+    
+    def _validate_block_pos(self, block):
         if not block.hash.startswith('0'):
             return False
-        if not self._is_valid_block_structure(block):
-            return False
-        if not self._verify_transactions(block.transactions):
-            return False
-        if not self._is_reasonable_timestamp(block.timestamp):
-            return False
-        if not self._is_valid_nonce(block):
-            return False
-        if not self._is_previous_hash_valid(block):
-            return False
-        if not self._apply_stake_consensus_rules(block):
+        if not self.coin.validate_block(block):
             return False
         return True
-
-    def _is_valid_block_structure(self, block):
-        """Check if the block structure is valid."""
-        if not isinstance(block, Block):
-            return False  # Block must be an instance of the Block class
-        required_attributes = ['index', 'transactions', 'timestamp', 'previous_hash', 'nonce', 'hash']
-        for attr in required_attributes:
-            if not hasattr(block, attr):
-                return False
-        if not isinstance(block.index, int) or block.index < 0:
-            return False  # Index must be a non-negative integer
-        if not isinstance(block.transactions, list):
-            return False  # Transactions must be a list
-        if not isinstance(block.timestamp, float) or block.timestamp <= 0:
-            return False  # Timestamp must be a positive floating-point number
-        if not isinstance(block.previous_hash, str):
-            return False  # Previous hash must be a string
-        if not isinstance(block.nonce, int) or block.nonce < 0:
-            return False  # Nonce must be a non-negative integer
-        if not isinstance(block.hash, str):
-            return False  # Hash must be a string
-        return True  # If all checks pass, the block structure is considered valid
-
-    def _verify_transactions(self, transactions):
-        """Verify the transactions in the block."""
-        for transaction in transactions:
-            if not self.coin.is_valid_transaction(transaction):
-                return False
+    
+    def _validate_block_bft(self, block, blockchain):
+        """Validate a block using Byzantine Fault Tolerance."""
+        if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
+            return False
+        previous_block = blockchain.get_block_by_hash(block.previous_hash)
+        if previous_block is None:
+            return False
+        if not self.coin.is_valid_nonce(block, blockchain.difficulty):
+            return False
         return True
-
-    def _is_reasonable_timestamp(self, timestamp):
-        """Ensure that the timestamp is reasonable."""
-        current_time = time.time()
-        max_future_time = current_time + MAX_FUTURE_BLOCK_TIME
-        return timestamp <= max_future_time
-
-    def _is_valid_nonce(self, block):
-        """Validate the nonce against the block's difficulty target."""
-        block_hash = block.hash_block()
-        return block_hash.startswith('0' * self.coin.difficulty)
-
-    def _is_previous_hash_valid(self, block):
-        """Check if the block's previous hash matches the hash of the last block in the chain."""
-        last_block = self.coin.get_last_block()
-        return last_block.hash == block.previous_hash
-
+    
+    def confirm_block_bft(self, block):
+        """Confirm a block using Byzantine Fault Tolerance."""
+        if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
+            return False
+        previous_block = self.get_block_by_hash(block.previous_hash)
+        if previous_block is None:
+            return False
+        if not self.coin.is_valid_nonce(block, self.difficulty):
+            return False
+        return True
+    
     def _apply_stake_consensus_rules(self, block):
         """Apply consensus rules specific to proof of stake."""
         stakeholders = self.coin.get_stakeholders()
@@ -407,7 +433,7 @@ class ProofOfStake:
             if not self._verify_transaction_signature(transaction):
                 return False  # Digital signature verification failed
         return True
-
+    
     def _verify_transaction_signature(self, transaction):
         """Verify the digital signature of a transaction."""
         if 'signature' not in transaction:
@@ -420,101 +446,14 @@ class ProofOfStake:
         expected_signature = hashlib.sha256(serialized_tx + sender_public_key.encode()).hexdigest()
         return signature == expected_signature
 
-class ByzantineFaultTolerance:
-    """A method for achieving consensus in the presence of Byzantine faults."""
-    def __init__(self, coin):
-        self.coin = coin
-
-    def validate_block(self, block, blockchain):
-        """Validate a block before adding it to the blockchain."""
-        if not self.is_valid_block_structure(block):
-            return False
-        if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
-            return False
-        previous_block = blockchain.get_block_by_hash(block.previous_hash)
-        if previous_block is None:
-            return False
-        if not self.is_valid_nonce(block, blockchain.difficulty):
-            return False
-        for transaction in block.transactions:
-            if not self.is_valid_transaction(transaction, blockchain):
-                return False
-        return True
-
-    def is_valid_block_structure(self, block):
-        """Check if the block structure is valid."""
-        if not isinstance(block, Block):
-            return False  # Block must be an instance of the Block class
-        required_attributes = ['index', 'transactions', 'timestamp', 'previous_hash', 'nonce', 'hash']
-        for attr in required_attributes:
-            if not hasattr(block, attr):
-                return False
-        if not isinstance(block.index, int) or block.index < 0:
-            return False  # Index must be a non-negative integer
-        if not isinstance(block.transactions, list):
-            return False  # Transactions must be a list
-        if not isinstance(block.timestamp, float) or block.timestamp <= 0:
-            return False  # Timestamp must be a positive floating-point number
-        if not isinstance(block.previous_hash, str):
-            return False  # Previous hash must be a string
-        if not isinstance(block.nonce, int) or block.nonce < 0:
-            return False  # Nonce must be a non-negative integer
-        if not isinstance(block.hash, str):
-            return False  # Hash must be a string
-        return True  # If all checks pass, the block structure is considered valid
-
-    def is_valid_nonce(self, block, difficulty):
-        """Check if the nonce meets the difficulty target."""
-        block_hash = block.hash_block()
-        return block_hash.startswith('0' * difficulty)  # Example difficulty check
-
-    def is_valid_transaction(self, transaction, blockchain):
-        """Check if a transaction is valid."""
-        if not isinstance(transaction, dict):
-            return False  # Transaction must be a dictionary
-        required_fields = ['sender', 'recipient', 'amount', 'timestamp']
-        for field in required_fields:
-            if field not in transaction:
-                return False
-        if not isinstance(transaction['sender'], str) or not isinstance(transaction['recipient'], str):
-            return False  # Sender and recipient must be strings representing addresses
-        if not isinstance(transaction['amount'], int) or transaction['amount'] <= 0:
-            return False  # Amount must be a positive integer
-        if not isinstance(transaction['timestamp'], float) or transaction['timestamp'] <= 0:
-            return False  # Timestamp must be a positive floating-point number
-        if 'signature' in transaction:
-            if not self.coin.verify_transaction_signature(transaction):
-                return False  # Signature verification failed
-        if blockchain.is_double_spending(transaction['sender'], transaction['amount']):
-            return False  # Double spending detected
-        return True  # If all checks pass, the transaction is considered valid
-
-class HybridConsensus:
-    """A hybrid consensus mechanism combining PoS and BFT."""
-    def __init__(self, pos_consensus, bft_consensus):
-        self.pos_consensus = pos_consensus
-        self.bft_consensus = bft_consensus
-
-    def propose_block(self):
-        """Propose a new block using the Proof of Stake consensus."""
-        return self.pos_consensus.propose_block()
-
-    def validate_block(self, block, blockchain):
-        """Validate a block before adding it to the blockchain."""
-        pos_valid = self.pos_consensus.validate_block(block, blockchain)
-        bft_valid = self.bft_consensus.validate_block(block, blockchain)
-        return pos_valid and bft_valid
-    
-    def confirm_block(self, block):
-        """Confirm a block using BFT."""
-        return self.bft_consensus.confirm_block(block)
-
-    def fallback_to_pos(self):
-        """Fallback to PoS in case of BFT failure."""
-        print("Fallback to PoS mechanism")
-
 class ExternalOracle:
     """External oracle for fetching real-world data."""
+    def __init__(self, price):
+        self.price = price
+
+    def update_price(self, price):
+        self.price = price
+
     def get_price(self, crypto_symbol):
         """Fetch the current price of a cryptocurrency."""
         if crypto_symbol == "ALS":
@@ -530,13 +469,14 @@ class ExternalOracle:
 
 class AlsaniaBlockchain:
     """A blockchain implementation based on the AlsaniaCoin."""
-    def __init__(self, coin, hybrid_consensus):
+    def __init__(self):
         """Initialize the blockchain with a specific digital currency and consensus mechanism."""
-        self.coin = coin
-        self.hybrid_consensus = hybrid_consensus
+        self.coin = AlsaniaCoin()
+        self.hybrid_consensus = HybridConsensus()
         self.chain = []
+        self.current_transactions = []
         self.pending_transactions = []
-        self.node = None
+        self.nodes = set()
         self.peers = []
         self.stakeholders = []
         self.contracts = {}
@@ -602,6 +542,14 @@ class AlsaniaBlockchain:
         with conn:
             data = conn.recv(4096)
             return pickle.loads(data)
+        
+    def handle_token_transfer(self, transaction):
+        """Handle AlsaniaCoin token transfer."""
+        sender = transaction['sender']
+        recipient = transaction['recipient']
+        amount = transaction['amount']
+        self.coin.transfer_token(sender, recipient, amount)
+        return f"Token transfer successful. Sender: {sender}, Recipient: {recipient}, Amount: {amount}"
         
     def deploy_contract(self, sender, contract_code, gas_limit):
         """Deploy a smart contract."""
@@ -707,10 +655,24 @@ class Block:
 
 class Node:
     """A node within the blockchain network."""
-    def __init__(self, blockchain: AlsaniaBlockchain, address: str, host, port: int):
-        self.blockchain = blockchain
+    def __init__(self, address, host, port):
         self.address = address
         self.host = host
         self.port = port
-        self.private_key = self.blockchain.generate_private_key()
-        self.public_key = self.blockchain.get_public_key(self.private_key)
+        self.private_key = self.generate_private_key()
+        self.public_key = self.derive_public_key()
+        self.balance = 0
+
+    def generate_private_key(self):
+        """Generate a private key."""
+        return ''.join(secrets.choice(VALID_CHARACTERS) for _ in range(PRIVATE_KEY_LENGTH))
+
+    def derive_public_key(self):
+        """Derive a public key from the private key."""
+        private_key_bytes = bytes.fromhex(self.private_key)
+        private_key = ec.derive_private_key(int(private_key_bytes.hex(), 16), ec.SECP256R1(), default_backend())
+        public_key = private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        return public_key.hex()
