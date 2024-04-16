@@ -519,6 +519,17 @@ class AlsaniaBlockchain:
         pos_valid = self.hybrid_consensus.pos_consensus.validate_block(block)
         bft_valid = self.hybrid_consensus.bft_consensus.validate_block(block)
         return pos_valid and bft_valid
+    
+    def reach_consensus(self):
+        """Reach consensus on adding a block to the chain."""
+        last_block = self.chain[-1]
+        proposed_block = self.hybrid_consensus.propose_block()
+        if self.hybrid_consensus.validate_block(proposed_block):
+            self.add_block_to_chain(proposed_block)
+            for node in self.nodes:
+                node.send_block(proposed_block)
+        else:
+            print("Proposed block failed validation, consensus not reached")
 
     def add_block_to_chain(self, block):
         """Add a validated block to the blockchain."""
@@ -655,6 +666,9 @@ class Block:
 
 class Node:
     """A node within the blockchain network."""
+    VALID_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    PRIVATE_KEY_LENGTH = 64
+
     def __init__(self, address, host, port):
         self.address = address
         self.host = host
@@ -665,7 +679,7 @@ class Node:
 
     def generate_private_key(self):
         """Generate a private key."""
-        return ''.join(secrets.choice(VALID_CHARACTERS) for _ in range(PRIVATE_KEY_LENGTH))
+        return ''.join(secrets.choice(self.VALID_CHARACTERS) for _ in range(self.PRIVATE_KEY_LENGTH))
 
     def derive_public_key(self):
         """Derive a public key from the private key."""
@@ -676,3 +690,40 @@ class Node:
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
         return public_key.hex()
+
+    @staticmethod
+    def create_message(sender, recipient, data):
+        return json.dumps({
+            "sender": sender,
+            "recipient": recipient,
+            "data": data
+        })
+
+    @staticmethod
+    def register_node(host, port, new_node_info):
+        url = f"http://{host}:{port}/register"
+        response = requests.post(url, json=new_node_info)
+        if response.status_code == 200:
+            print("Node registered successfully")
+        else:
+            print("Failed to register node")
+
+    def send_transaction(self, transaction):
+        """Send a transaction to another node."""
+        payload = {'transaction': transaction}
+        try:
+            response = requests.post(f"http://{self.host}:{self.port}/transaction", json=payload)
+            response.raise_for_status()
+            print("Transaction sent successfully")
+        except requests.RequestException as e:
+            print(f"Error sending transaction: {e}")
+
+    def send_block(self, block):
+        """Send a block to another node."""
+        payload = {'block': block}
+        try:
+            response = requests.post(f"http://{self.host}:{self.port}/block", json=payload)
+            response.raise_for_status()
+            print("Block sent successfully")
+        except requests.RequestException as e:
+            print(f"Error sending block: {e}")
