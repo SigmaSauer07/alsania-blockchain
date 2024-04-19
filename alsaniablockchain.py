@@ -244,6 +244,16 @@ class AlsaniaCoin:
             if transaction['sender'] == sender and transaction['amount'] == amount:
                 return True
         return False
+    
+    def mint(self, recipient, amount):
+        """Mint new AlsaniaCoins and distribute them to the recipient."""
+        if amount <= 0:
+            raise ValueError("Amount must be positive")
+        if recipient not in self.token_holders:
+            raise ValueError("Recipient address is not a token holder")
+        self.total_supply += amount
+        self.balances[recipient] += amount
+        self.token_holders.add(recipient)
 
     def deploy_contract(self, sender, contract_code, gas_limit):
         """Deploy a smart contract."""
@@ -392,7 +402,11 @@ class HybridConsensus:
 
     def _propose_block_pos(self):
         """Propose a new block using the Proof of Stake consensus."""
-        return self.coin.create_block()
+        proposed_block = self.coin.create_block()
+        rewards = self.calculate_staking_rewards()
+        for validator in self.validators:
+            self.coin.mint(validator, rewards)
+        return proposed_block
     
     def _validate_block_pos(self, block):
         if not block.hash.startswith('0'):
