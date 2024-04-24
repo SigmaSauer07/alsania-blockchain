@@ -8,7 +8,7 @@ Key Components
 
 1. AlsaniaCoin
 
-AlsaniaCoin (ALSC) serves as the native digital currency of the Alsania Blockchain. With a total supply capped at 50 million ALSC, it facilitates peer-to-peer transactions, incentivizes network participation, and enables the execution of smart contracts. ALS represents a unit of value within the ecosystem, divisible up to 18 decimal places, ensuring microtransactions and granular value transfers.
+AlsaniaCoin (ALSC) serves as the native digital currency of the Alsania Blockchain. With a total supply capped at 50 million ALSC, it facilitates peer-to-peer transactions, incentivizes network participation, and enables the execution of smart contracts. ALSC represents a unit of value within the ecosystem, divisible up to 18 decimal places, ensuring microtransactions and granular value transfers.
 
 2. Hybrid Consensus Mechanism
 
@@ -24,7 +24,7 @@ Features and Capabilities
 
 2. Privacy Enhancements: With privacy features enabled, AlsaniaCoin transactions offer enhanced confidentiality, ensuring sensitive transaction data remains private while maintaining the transparency and immutability of the ledger.
 
-3. Staking and Delegations: Network participants can stake ALS to secure the network, earn staking rewards, and participate in consensus. Additionally, users have the option to delegate their stake to trusted validators, further enhancing network security and decentralization.
+3. Staking and Delegations: Network participants can stake ALSC to secure the network, earn staking rewards, and participate in consensus. Additionally, users have the option to delegate their stake to trusted validators, further enhancing network security and decentralization.
 
 4. External Oracle Integration: Alsania Blockchain integrates external oracles to fetch real-world data, enabling smart contracts to interact with off-chain information sources, such as market prices, weather data, and more.
 
