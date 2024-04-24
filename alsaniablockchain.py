@@ -80,7 +80,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
 
     def set_dynamic_gas_fee_multiplier(self, multiplier):
         self.dynamic_gas_fee_multiplier = multiplier
-
+        
     def calculate_gas_fee(self):
         return int(self.base_gas_fee * self.dynamic_gas_fee_multiplier)
 
@@ -153,7 +153,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
         expected_signature = self.sign_transaction(transaction, sender)
         if signature != expected_signature:
             raise InvalidTransactionError("Invalid transaction signature")
-
+    
     def add_pending_transaction(self, transaction):  #Add a transaction to the list of pending transactions.
         self.pending_transactions.append(transaction)
 
@@ -209,7 +209,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
             if transaction['sender'] == sender and transaction['amount'] == amount:
                 return True
         return False
-
+    
     def mint(self, recipient, amount):  #Mint new AlsaniaCoins and distribute them to the recipient.
         if amount <= 0:
             raise ValueError("Amount must be positive")
@@ -271,7 +271,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
             self.delegations[validator] = {delegator: amount}
         except Exception as e:
             raise BlockchainError(f"Stake delegation failed: {str(e)}")
-
+    
     def revoke_delegation(self, delegator, validator):  #Remove stake delegation from a validator.
         if validator not in self.stakeholders:
             raise ValueError("Validator is not a stakeholder")
@@ -305,7 +305,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
 
     def get_price_of_crypto(self, crypto_symbol):  #Fetch the current price of a cryptocurrency from an external API.
         try:
-            if crypto_symbol == "ALS":
+            if crypto_symbol == "ALSC":
                 return 10  # Placeholder price for AlsaniaCoin
             elif crypto_symbol == "BTC":
                 response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
@@ -344,7 +344,7 @@ class HybridConsensus:  #Hybrid consensus mechanism for the Alsania Blockchain.
 
     def validate_block(self, block, blockchain):  #Validate a block before adding it to the blockchain.
         return self._validate_block_pos(block) and self._validate_block_bft(block, blockchain)
-
+    
     def confirm_block(self, block):  #Confirm a block using BFT.
         return self.confirm_block_bft(block)
 
@@ -357,14 +357,14 @@ class HybridConsensus:  #Hybrid consensus mechanism for the Alsania Blockchain.
         for validator in self.validators:
             self.coin.mint(validator, rewards)
         return proposed_block
-
+    
     def _validate_block_pos(self, block):
         if not block.hash.startswith('0'):
             return False
         if not self.coin.validate_block(block):
             return False
         return True
-
+    
     def _validate_block_bft(self, block, blockchain):  #Validate a block using Byzantine Fault Tolerance.
         if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
             return False
@@ -374,7 +374,7 @@ class HybridConsensus:  #Hybrid consensus mechanism for the Alsania Blockchain.
         if not self.coin.is_valid_nonce(block, blockchain.difficulty):
             return False
         return True
-
+    
     def confirm_block_bft(self, block):  #Confirm a block using Byzantine Fault Tolerance.
         if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
             return False
@@ -384,7 +384,7 @@ class HybridConsensus:  #Hybrid consensus mechanism for the Alsania Blockchain.
         if not self.coin.is_valid_nonce(block, self.difficulty):
             return False
         return True
-
+    
     def _apply_stake_consensus_rules(self, block):  #Apply consensus rules specific to proof of stake.
         stakeholders = self.coin.get_stakeholders()
         for transaction in block.transactions:
@@ -394,7 +394,7 @@ class HybridConsensus:  #Hybrid consensus mechanism for the Alsania Blockchain.
             if not self._verify_transaction_signature(transaction):
                 return False  # Digital signature verification failed
         return True
-
+    
     def _verify_transaction_signature(self, transaction):  #Verify the digital signature of a transaction.
         if 'signature' not in transaction:
             return False  # Signature missing
@@ -415,7 +415,7 @@ class ExternalOracle:  #External oracle for fetching real-world data.
         self.price = price
 
     def get_price(self, crypto_symbol):  #Fetch the current price of a cryptocurrency.
-        if crypto_symbol == "ALS":
+        if crypto_symbol == "ALSC":
             return 10  # Placeholder price for AlsaniaCoin
         elif crypto_symbol == "BTC":
             response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
@@ -469,10 +469,13 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
         return transaction
 
     def validate_block(self, block):  #Validate a block before adding it to the blockchain.
-        pos_valid = self.hybrid_consensus.pos_consensus.validate_block(block)
-        bft_valid = self.hybrid_consensus.bft_consensus.validate_block(block)
-        return pos_valid and bft_valid
-
+        calculated_merkle_root = block.calculate_merkle_root()
+        return (block.previous_hash == self.chain[-1].hash and
+                block.hash.startswith('0') and
+                block.merkle_root == calculated_merkle_root and
+                self.hybrid_consensus.pos_consensus.validate_block(block) and
+                self.hybrid_consensus.bft_consensus.validate_block(block))
+    
     def reach_consensus(self):  #Reach consensus on adding a block to the chain.
         last_block = self.chain[-1]
         proposed_block = self.hybrid_consensus.propose_block()
@@ -491,7 +494,8 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
             raise ValidationFailedError("BFT confirmation failed")
         if not self.validate_block(block):
             raise ValidationFailedError("Block validation failed")
-        self.chain.append(block)
+        if self.validate_block(block):
+            self.chain.append(block)
 
     def send_block_to_peer(self, host, port, block):  #Send a block to a peer node.
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -502,14 +506,14 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
         with conn:
             data = conn.recv(4096)
             return pickle.loads(data)
-
+        
     def handle_token_transfer(self, transaction):  #Handle AlsaniaCoin token transfer.
         sender = transaction['sender']
         recipient = transaction['recipient']
         amount = transaction['amount']
         self.coin.transfer_token(sender, recipient, amount)
         return f"Token transfer successful. Sender: {sender}, Recipient: {recipient}, Amount: {amount}"
-
+        
     def deploy_contract(self, sender, contract_name, contract_code, gas_limit):  #Deploy a smart contract.
         if contract_name in self.deployed_contracts:
             raise ValueError(f"Contract with name '{contract_name}' already deployed")
@@ -524,7 +528,7 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
             raise BlockchainError(f"Failed to deploy contract: {ve}")
         except Exception as e:
             raise BlockchainError(f"Contract deployment failed: {str(e)}")
-
+        
     def invoke_contract_method(self, sender, contract_address, method, args, gas_limit):  #Call a method on a smart contract.
         try:
             if contract_address not in self.contracts.values():
@@ -546,10 +550,10 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
         else:
             raise ValueError("ABI not found for the contract address")
 
-    def transfer_token(self, token_contract_name: str, sender: str, recipient: str, amount: int, private_key=None):  #Transfer tokens between addresses.
+    def transfer_token(self, token_contract_name: str, sender: str, recipient: str, amount: int, private_key=None):
         if token_contract_name not in self.deployed_contracts:
             raise ValueError("Token contract not deployed")
-        token_contract_address = self.deploy_contracts[token_contract_name]
+        token_contract_address = self.deployed_contracts[token_contract_name]
         if self.coin.get_token_balance(token_contract_name, sender) < amount:
             raise InsufficientBalanceError("Insufficient balance")
         transaction = {
@@ -557,20 +561,20 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
             'from': sender,
             'to': token_contract_address,
             'value': amount
-            }
+        }
         self.coin.create_transaction(sender, recipient, amount)
         if private_key:
             transaction['private_key'] = private_key
         self.send_transaction(transaction)
         return f"Token transfer successful. Sender: {sender}, Recipient: {recipient}, Amount: {amount}"
-
+    
     def get_token_balance(self, token_contract_name: str, address: str):  #Query token balance.
         if token_contract_name not in self.contracts:
             raise ValueError("Token contract not deployed")
         token_contract_address = self.contracts[token_contract_name]
         balance = self.get_balance_from_blockchain(token_contract_address, address)
         return balance
-
+    
     def handle_token_event(self, event):  #Handle an event emitted by a token contract.
         event_name = event['name']
         event_data = event['data']
@@ -596,13 +600,29 @@ class Block:  #A block within the blockchain.
         self.previous_hash = previous_hash
         self.nonce = 0
         self.hash = self.hash_block()
+        self.merkle_root = self.calculate_merkle_root()
+
+    def calculate_merkle_root(self):
+        transaction_hashes = [hashlib.sha256(tx.encode()).digest() for tx in self.transactions]
+        return self._calculate_merkle_root(transaction_hashes)
+
+    def _calculate_merkle_root(self, data):
+        if len(data) == 1:
+            return data[0]  # If only one item, it's the root
+        new_data = []
+        for i in range(0, len(data)-1, 2):  # Pair and hash adjacent nodes
+            combined_hash = hashlib.sha256(data[i] + data[i+1]).digest()
+            new_data.append(combined_hash)
+        if len(data) % 2 == 1:  # If odd number of nodes, duplicate last node
+            new_data.append(data[-1])
+        return self._calculate_merkle_root(new_data)
 
     def hash_block(self):
         block_header = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce)
         sha = hashlib.sha256()
         sha.update(block_header.encode('utf-8'))
         return sha.hexdigest()
-
+    
 class Node:  #A node within the blockchain network.
     VALID_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     PRIVATE_KEY_LENGTH = 64
