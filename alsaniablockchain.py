@@ -331,68 +331,24 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
         receipt = web3.eth.waitForTransactionReceipt(tx_hash)
         print(f"Event emitted: {event_name}, Data: {event_data}, Transaction Hash: {receipt.transactionHash.hex()}")
 
-class HybridConsensus:  #Hybrid consensus mechanism for the Alsania Blockchain.
+class PaLaConsensus:  #HPaLa consensus mechanism for the Alsania Blockchain.
 
     def __init__(self):
         self.validators = set()
-        self.consensus_type = 'Hybrid'
+        self.consensus_type = 'PaLa'
         self.block_proposal_timeout = 10
         self.consensus_threshold = 0.6
 
-    def propose_block(self):  #Propose a new block using the Proof of Stake consensus.
-        return self._propose_block_pos()
+    def propose_block(self):  #Propose a new block using the PaLa consensus.
+        return self._propose_block_pala()
 
     def validate_block(self, block, blockchain):  #Validate a block before adding it to the blockchain.
-        return self._validate_block_pos(block) and self._validate_block_bft(block, blockchain)
+        return self._validate_block_pala(block)
     
     def confirm_block(self, block):  #Confirm a block using BFT.
-        return self.confirm_block_bft(block)
+        return self.confirm_block_pala(block)
 
-    def fallback_to_pos(self):  #Fallback to PoS in case of BFT failure.
-        print("Fallback to PoS mechanism")
-
-    def _propose_block_pos(self):  #Propose a new block using the Proof of Stake consensus.
-        proposed_block = self.coin.create_block()
-        rewards = self.calculate_staking_rewards()
-        for validator in self.validators:
-            self.coin.mint(validator, rewards)
-        return proposed_block
-    
-    def _validate_block_pos(self, block):
-        if not block.hash.startswith('0'):
-            return False
-        if not self.coin.validate_block(block):
-            return False
-        return True
-    
-    def _validate_block_bft(self, block, blockchain):  #Validate a block using Byzantine Fault Tolerance.
-        if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
-            return False
-        previous_block = blockchain.get_block_by_hash(block.previous_hash)
-        if previous_block is None:
-            return False
-        if not self.coin.is_valid_nonce(block, blockchain.difficulty):
-            return False
-        return True
-    
-    def confirm_block_bft(self, block):  #Confirm a block using Byzantine Fault Tolerance.
-        if block.timestamp > time.time() + MAX_FUTURE_BLOCK_TIME:
-            return False
-        previous_block = self.get_block_by_hash(block.previous_hash)
-        if previous_block is None:
-            return False
-        if not self.coin.is_valid_nonce(block, self.difficulty):
-            return False
-        return True
-    
-    def _apply_stake_consensus_rules(self, block):  #Apply consensus rules specific to proof of stake.
-        stakeholders = self.coin.get_stakeholders()
-        for transaction in block.transactions:
-            sender = transaction['sender']
-            if sender not in stakeholders:
-                return False  # Sender is not eligible to participate in block creation
-            if not self._verify_transaction_signature(transaction):
-                return False  # Digital signature verification failed
+    def _apply_pala_consensus_rules(self, block):  #Apply consensus rules specific to proof of authority.
         return True
     
     def _verify_transaction_signature(self, transaction):  #Verify the digital signature of a transaction.
@@ -430,7 +386,7 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
 
     def __init__(self):  #Initialize the blockchain with a specific digital currency and consensus mechanism.
         self.coin = AlsaniaCoin()
-        self.hybrid_consensus = HybridConsensus()
+        self.pala_consensus = PaLaConsensus()
         self.chain = []
         self.current_transactions = []
         self.pending_transactions = []
@@ -473,13 +429,12 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
         return (block.previous_hash == self.chain[-1].hash and
                 block.hash.startswith('0') and
                 block.merkle_root == calculated_merkle_root and
-                self.hybrid_consensus.pos_consensus.validate_block(block) and
-                self.hybrid_consensus.bft_consensus.validate_block(block))
+                self.pala_consensus.validate_block(block))
     
     def reach_consensus(self):  #Reach consensus on adding a block to the chain.
         last_block = self.chain[-1]
-        proposed_block = self.hybrid_consensus.propose_block()
-        if self.hybrid_consensus.validate_block(proposed_block):
+        proposed_block = self.pala_consensus.propose_block()
+        if self.pala_consensus.validate_block(proposed_block):
             self.add_block_to_chain(proposed_block)
             for node in self.nodes:
                 node.send_block(proposed_block)
