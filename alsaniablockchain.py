@@ -7,14 +7,16 @@ import socket  # For socket operations
 import pickle  # For object serialization
 import string  # For string manipulation operations
 from collections import defaultdict # For default dictionary
-from cryptography.hazmat.primitives import serialization # For serialization
+from cryptography.hazmat.primitives import serialization, hashes # For serialization
 from cryptography.hazmat.backends import default_backend # For default backend
-from cryptography.hazmat.primitives import hashes # For hashing
 from cryptography.hazmat.primitives.asymmetric import ec # For elliptic curve cryptography
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature # For invalid signature
+from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from ipfshttpclient import connect  # Import IPFS client
 from typing import List # For type hinting
 from web3 import Web3  # For web3 operations
+from exceptionhandeling import BlockchainError, ValidationFailedError, InsufficientBalanceError, InvalidTransactionError, DoubleSpendingError, AtomicSwapError
 
 ipfs_client = connect()  # Connect to IPFS daemon
 web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))  # Connect to local Ethereum node
@@ -22,24 +24,6 @@ web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))  # Connect to local Ethe
 PRIVATE_KEY_LENGTH = 64  # Length of a hexadecimal private key
 VALID_CHARACTERS = string.hexdigits[:-6]  # Valid characters for a private key (0-9, a-f)
 MAX_FUTURE_BLOCK_TIME = 60  # Maximum allowable future block time in seconds (e.g., 1 minute)
-
-class BlockchainError(Exception):
-    pass
-
-class ValidationFailedError(BlockchainError):
-    pass
-
-class InsufficientBalanceError(BlockchainError):
-    pass
-
-class InvalidTransactionError(BlockchainError):
-    pass
-
-class DoubleSpendingError(BlockchainError):
-    pass
-
-class AtomicSwapError(BlockchainError):
-    pass
 
 def safe_add(a, b):
     if a + b < a:
@@ -80,7 +64,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
 
     def set_dynamic_gas_fee_multiplier(self, multiplier):
         self.dynamic_gas_fee_multiplier = multiplier
-        
+
     def calculate_gas_fee(self):
         return int(self.base_gas_fee * self.dynamic_gas_fee_multiplier)
 
@@ -136,9 +120,9 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
             raise DoubleSpendingError("Double spending detected")
         self._transfer(sender, recipient, total_amount)
 
-    def _transfer(self, sender, recipient, amount):  #Update balances after transferring coins.
-        self.balances[sender] = safe_subtract(self.balances[sender], amount)  # Safe subtraction
-        self.balances[recipient] = safe_add(self.balances[recipient], amount)  # Safe addition
+    def _transfer(self, sender, recipient, amount):  #Perform the actual transfer of coins.
+        self.balances[sender] = safe_subtract(self.balances[sender], amount)
+        self.balances[recipient] = safe_add(self.balances[recipient], amount)
 
     def sign_transaction(self, transaction, private_key):  #Create a digital signature for a transaction.
         serialized_tx = json.dumps(transaction, sort_keys=True).encode()
@@ -153,7 +137,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
         expected_signature = self.sign_transaction(transaction, sender)
         if signature != expected_signature:
             raise InvalidTransactionError("Invalid transaction signature")
-    
+
     def add_pending_transaction(self, transaction):  #Add a transaction to the list of pending transactions.
         self.pending_transactions.append(transaction)
 
@@ -209,7 +193,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
             if transaction['sender'] == sender and transaction['amount'] == amount:
                 return True
         return False
-    
+
     def mint(self, recipient, amount):  #Mint new AlsaniaCoins and distribute them to the recipient.
         if amount <= 0:
             raise ValueError("Amount must be positive")
@@ -271,7 +255,7 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
             self.delegations[validator] = {delegator: amount}
         except Exception as e:
             raise BlockchainError(f"Stake delegation failed: {str(e)}")
-    
+
     def revoke_delegation(self, delegator, validator):  #Remove stake delegation from a validator.
         if validator not in self.stakeholders:
             raise ValueError("Validator is not a stakeholder")
@@ -325,42 +309,133 @@ class AlsaniaCoin:  #A digital currency used within the Alsania blockchain
             return None
 
     def log_event(self, contract_instance, event_name, **kwargs):  #Emit an event from the smart contract.
-        event_data = {'name': event_name, 'data': kwargs}
-        contract_event = contract_instance.events[event_name]
-        tx_hash = contract_event().createFilter().deploy({'from': YOUR_ACCOUNT_ADDRESS}).transact()
-        receipt = web3.eth.waitForTransactionReceipt(tx_hash)
-        print(f"Event emitted: {event_name}, Data: {event_data}, Transaction Hash: {receipt.transactionHash.hex()}")
+        try:
+            event_data = {'name': event_name, 'data': kwargs}
+            contract_event = contract_instance.events[event_name]
+            tx_hash = contract_event().createFilter().deploy({'from': YOUR_ACCOUNT_ADDRESS}).transact()
+            receipt = web3.eth.waitForTransactionReceipt(tx_hash)
+            print(f"Event emitted: {event_name}, Data: {event_data}, Transaction Hash: {receipt.transactionHash.hex()}")
+        except ValueError as ve:
+            raise BlockchainError(f"Failed to emit event: {ve}")
+        except Exception as e:
+            raise BlockchainError(f"Error occurred while emitting event: {str(e)}")
+
+class TransactionPool:
+    def __init__(self):
+        self.transactions = []
+
+    def add_transaction(self, transaction):
+        self.transactions.append(transaction)
+
+    def remove_transaction(self, transaction):
+        self.transactions.remove(transaction)
+
+    def get_pending_transactions(self):
+        return self.transactions
 
 class PaLaConsensus:  #HPaLa consensus mechanism for the Alsania Blockchain.
 
-    def __init__(self):
-        self.validators = set()
-        self.consensus_type = 'PaLa'
+    def __init__(self, validators, transaction_pool):
+        self.validators = validators
+        self.transaction_pool = transaction_pool
+        self.consensus_type = 'POS'
         self.block_proposal_timeout = 10
-        self.consensus_threshold = 0.6
+        self.consensus_threshold = 2/3
+        self.coin = AlsaniaCoin()
+        self.pending_blocks = defaultdict(list)
+        self.last_reward_distribution_time = time.time()
+        self.total_staked_amount = sum(v['staked_amount'] for v in validators)
 
-    def propose_block(self):  #Propose a new block using the PaLa consensus.
-        return self._propose_block_pala()
+    def propose_block(self):  #Propose a new block using the POS consensus.
+        block = self._propose_block_pos()
+        if block:
+            self.pending_blocks[block['hash']].append(block)
+            block['transactions'] = self.transaction_pool.get_pending_transactions()
+            self.pending_blocks[block['hash']].append(block)
+        if len(self.pending_blocks[block['hash']]) >= len(self.validators) * self.consensus_threshold:
+            return block
 
-    def validate_block(self, block, blockchain):  #Validate a block before adding it to the blockchain.
-        return self._validate_block_pala(block)
-    
-    def confirm_block(self, block):  #Confirm a block using BFT.
-        return self.confirm_block_pala(block)
+    def validate_block(self, block, blockchain):
+        if self._validate_block_pos(block):
+            if self._prepare_block_pos(block):
+                return self._commit_block_pos(block)
+        return False
 
-    def _apply_pala_consensus_rules(self, block):  #Apply consensus rules specific to proof of authority.
-        return True
-    
+    def confirm_block(self, block):  #Confirm a block using POS.
+        if self.confirm_block_pos(block):
+            self.pending_blocks['commit'].append(block)
+            return True
+        return False
+
+    def _propose_block_pos(self):  #Propose a new block using the POS consensus.
+        return {'hash': 'block_hash', 'data': 'block_data'}
+
+    def _validate_block_pos(self, block):  #Validate a block before adding it to the blockchain.
+        if block['hash'] == 'block_hash' and block['data'] == 'block_data':
+            return True
+        return False
+
+    def _prepare_block_pos(self, block):  #Prepare a block for commit using POS.
+        if block['hash'] == 'block_hash' and block['data'] == 'block_data':
+            prepare_count = len(self.pending_blocks[block[ 'hash']])
+        return prepare_count >= len(self.validators) * self.consensus_threshold
+
+    def _commit_block_pos(self, block):  #Commit a block using POS.
+        if block['hash'] == 'block_hash' and block['data'] == 'block_data':
+            return True
+        return False
+
+    def _apply_pos_consensus_rules(self, block):  #Apply consensus rules specific to proof of stake.
+        if block['hash'] == 'block_hash' and block['data'] == 'block_data':
+            return True
+        return False
+
+    def _confirm_block_pos(self, block):  #Confirm a block using POS.
+        if block['hash'] == 'block_hash' and block['data'] == 'block_data':
+            return True
+        return False
+
     def _verify_transaction_signature(self, transaction):  #Verify the digital signature of a transaction.
         if 'signature' not in transaction:
-            return False  # Signature missing
-        sender_public_key = self.coin.get_public_key(transaction['sender'])
+            return False
+        public_key = self.coin.get_public_key(transaction['sender'])
         signature = transaction['signature']
         transaction_copy = transaction.copy()
         del transaction_copy['signature']
         serialized_tx = json.dumps(transaction_copy, sort_keys=True).encode()
-        expected_signature = hashlib.sha256(serialized_tx + sender_public_key.encode()).hexdigest()
-        return signature == expected_signature
+        try:
+            public_key.verify(
+                signature,
+                serialized_tx,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+            return True
+        except Exception as e:
+            return False
+
+    def distribute_staking_rewards(self): # Calculate the elapsed time since the last reward distribution
+        current_time = time.time()
+        elapsed_time = current_time - self.last_reward_distribution_time
+        elapsed_years = elapsed_time / (365 * 24 * 3600)
+        reward_per_validator = 0.05 * self.total_staked_amount * elapsed_years / len(self.validators)
+        for validator in self.validators:
+            reward_amount = validator['staked_amount'] * reward_per_validator
+            self.coin.transfer('Staking Rewards', validator['address'], reward_amount)
+        self.last_reward_distribution_time = current_time
+
+    def mint_new_coins(self, validator, amount):
+        if validator in self.validators:
+            each_share = amount / len(self.validators)
+            for v in self.validators:
+                self.coin.mint(v, each_share)
+            self.distribute_staking_rewards()
+            return True
+        else:
+            return False
 
 class ExternalOracle:  #External oracle for fetching real-world data.
 
@@ -430,7 +505,7 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
                 block.hash.startswith('0') and
                 block.merkle_root == calculated_merkle_root and
                 self.pala_consensus.validate_block(block))
-    
+
     def reach_consensus(self):  #Reach consensus on adding a block to the chain.
         last_block = self.chain[-1]
         proposed_block = self.pala_consensus.propose_block()
@@ -442,11 +517,8 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
             print("Proposed block failed validation, consensus not reached")
 
     def add_block_to_chain(self, block):  #Add a validated block to the blockchain.
-        if not self.hybrid_consensus.pos_consensus.validate_block(block):
-            raise ValidationFailedError("PoS validation failed")
-        if not self.hybrid_consensus.confirm_block(block):
-            self.hybrid_consensus.fallback_to_pos()  # Fallback to PoS
-            raise ValidationFailedError("BFT confirmation failed")
+        if not self.pala_consensus.validate_block(block):
+            raise ValidationFailedError("Consensus validation failed")
         if not self.validate_block(block):
             raise ValidationFailedError("Block validation failed")
         if self.validate_block(block):
@@ -461,14 +533,14 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
         with conn:
             data = conn.recv(4096)
             return pickle.loads(data)
-        
+
     def handle_token_transfer(self, transaction):  #Handle AlsaniaCoin token transfer.
         sender = transaction['sender']
         recipient = transaction['recipient']
         amount = transaction['amount']
         self.coin.transfer_token(sender, recipient, amount)
         return f"Token transfer successful. Sender: {sender}, Recipient: {recipient}, Amount: {amount}"
-        
+
     def deploy_contract(self, sender, contract_name, contract_code, gas_limit):  #Deploy a smart contract.
         if contract_name in self.deployed_contracts:
             raise ValueError(f"Contract with name '{contract_name}' already deployed")
@@ -483,7 +555,7 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
             raise BlockchainError(f"Failed to deploy contract: {ve}")
         except Exception as e:
             raise BlockchainError(f"Contract deployment failed: {str(e)}")
-        
+
     def invoke_contract_method(self, sender, contract_address, method, args, gas_limit):  #Call a method on a smart contract.
         try:
             if contract_address not in self.contracts.values():
@@ -522,14 +594,14 @@ class AlsaniaBlockchain:  #A blockchain implementation based on the AlsaniaCoin.
             transaction['private_key'] = private_key
         self.send_transaction(transaction)
         return f"Token transfer successful. Sender: {sender}, Recipient: {recipient}, Amount: {amount}"
-    
+
     def get_token_balance(self, token_contract_name: str, address: str):  #Query token balance.
         if token_contract_name not in self.contracts:
             raise ValueError("Token contract not deployed")
         token_contract_address = self.contracts[token_contract_name]
         balance = self.get_balance_from_blockchain(token_contract_address, address)
         return balance
-    
+
     def handle_token_event(self, event):  #Handle an event emitted by a token contract.
         event_name = event['name']
         event_data = event['data']
@@ -577,7 +649,7 @@ class Block:  #A block within the blockchain.
         sha = hashlib.sha256()
         sha.update(block_header.encode('utf-8'))
         return sha.hexdigest()
-    
+
 class Node:  #A node within the blockchain network.
     VALID_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     PRIVATE_KEY_LENGTH = 64
