@@ -18,7 +18,19 @@ from typing import List # For type hinting
 from web3 import Web3  # For web3 operations
 from exceptionhandeling import BlockchainError, ValidationFailedError, InsufficientBalanceError, InvalidTransactionError, DoubleSpendingError, AtomicSwapError
 
-ipfs_client = connect()  # Connect to IPFS daemon
+def connect_to_ipfs():
+    try:
+        response = requests.post('http://127.0.0.1:5001/api/v0/version')
+        response.raise_for_status()  # Raise an error for bad status codes
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to connect to IPFS daemon: {e}")
+        return None
+
+ipfs_version = connect_to_ipfs()
+if ipfs_version:
+    print(f"Connected to IPFS daemon: {ipfs_version}")
+
 web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))  # Connect to local Ethereum node
 # Define constants for security
 PRIVATE_KEY_LENGTH = 64  # Length of a hexadecimal private key
@@ -333,7 +345,7 @@ class TransactionPool:
     def get_pending_transactions(self):
         return self.transactions
 
-class PaLaConsensus:  #HPaLa consensus mechanism for the Alsania Blockchain.
+class PaLaConsensus:  #PaLa consensus mechanism for the Alsania Blockchain.
 
     def __init__(self, validators, transaction_pool):
         self.validators = validators
@@ -650,22 +662,27 @@ class Block:  #A block within the blockchain.
         sha.update(block_header.encode('utf-8'))
         return sha.hexdigest()
 
-class Node:  #A node within the blockchain network.
+class Node:
     VALID_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     PRIVATE_KEY_LENGTH = 64
 
-    def __init__(self, address, host, port):
+    def __init__(self, address, host, port, ipfs_host='127.0.0.1', ipfs_port=5001):
         self.address = address
         self.host = host
         self.port = port
         self.private_key = self.generate_private_key()
         self.public_key = self.derive_public_key()
         self.balance = 0
+        self.ipfs_host = ipfs_host
+        self.ipfs_port = ipfs_port
+        self.ipfs_client = connect(f"/ip4/{self.ipfs_host}/tcp/{self.ipfs_port}/http")
 
-    def generate_private_key(self):  #Generate a private key.
+    def generate_private_key(self):
+        """Generate a private key."""
         return ''.join(secrets.choice(self.VALID_CHARACTERS) for _ in range(self.PRIVATE_KEY_LENGTH))
 
-    def derive_public_key(self):  #Derive a public key from the private key.
+    def derive_public_key(self):
+        """Derive a public key from the private key."""
         private_key_bytes = bytes.fromhex(self.private_key)
         private_key = ec.derive_private_key(int(private_key_bytes.hex(), 16), ec.SECP256R1(), default_backend())
         public_key = private_key.public_key().public_bytes(
@@ -676,6 +693,7 @@ class Node:  #A node within the blockchain network.
 
     @staticmethod
     def create_message(sender, recipient, data):
+        """Create a JSON-formatted message."""
         return json.dumps({
             "sender": sender,
             "recipient": recipient,
@@ -684,14 +702,17 @@ class Node:  #A node within the blockchain network.
 
     @staticmethod
     def register_node(host, port, new_node_info):
+        """Register a new node with the specified host and port."""
         url = f"http://{host}:{port}/register"
-        response = requests.post(url, json=new_node_info)
-        if response.status_code == 200:
+        try:
+            response = requests.post(url, json=new_node_info)
+            response.raise_for_status()
             print("Node registered successfully")
-        else:
-            print("Failed to register node")
+        except requests.RequestException as e:
+            print(f"Failed to register node: {e}")
 
-    def send_transaction(self, transaction):  #Send a transaction to another node.
+    def send_transaction(self, transaction):
+        """Send a transaction to another node."""
         payload = {'transaction': transaction}
         try:
             response = requests.post(f"http://{self.host}:{self.port}/transaction", json=payload)
@@ -700,7 +721,8 @@ class Node:  #A node within the blockchain network.
         except requests.RequestException as e:
             print(f"Error sending transaction: {e}")
 
-    def send_block(self, block):  #Send a block to another node.
+    def send_block(self, block):
+        """Send a block to another node."""
         payload = {'block': block}
         try:
             response = requests.post(f"http://{self.host}:{self.port}/block", json=payload)
@@ -708,3 +730,20 @@ class Node:  #A node within the blockchain network.
             print("Block sent successfully")
         except requests.RequestException as e:
             print(f"Error sending block: {e}")
+
+    def add_file_to_ipfs(self, file_path):
+        """Add a file to IPFS and return its hash."""
+        try:
+            res = self.ipfs_client.add(file_path)
+            return res['Hash']
+        except Exception as e:
+            print(f"Failed to add file to IPFS: {e}")
+            return None
+
+    def get_file_from_ipfs(self, ipfs_hash, download_path):
+        """Get a file from IPFS by its hash and save it to download_path."""
+        try:
+            self.ipfs_client.get(ipfs_hash, download_path)
+            print(f"File retrieved from IPFS and saved to: {download_path}")
+        except Exception as e:
+            print(f"Failed to retrieve file from IPFS: {e}")
