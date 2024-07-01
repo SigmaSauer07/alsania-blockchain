@@ -345,7 +345,7 @@ class TransactionPool:
     def get_pending_transactions(self):
         return self.transactions
 
-class PaLaConsensus:  #PaLa consensus mechanism for the Alsania Blockchain.
+class PaLaConsensus:  #HPaLa consensus mechanism for the Alsania Blockchain.
 
     def __init__(self, validators, transaction_pool):
         self.validators = validators
