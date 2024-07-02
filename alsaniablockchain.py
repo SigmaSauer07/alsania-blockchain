@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from ipfshttpclient import connect  # Import IPFS client
 from typing import List # For type hinting
 from web3 import Web3  # For web3 operations
-from exceptionhandeling import BlockchainError, ValidationFailedError, InsufficientBalanceError, InvalidTransactionError, DoubleSpendingError, AtomicSwapError
+from blockchain.exceptionhandeling import BlockchainError, ValidationFailedError, InsufficientBalanceError, InvalidTransactionError, DoubleSpendingError, AtomicSwapError
 
 def connect_to_ipfs():
     try:
