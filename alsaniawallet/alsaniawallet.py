@@ -35,9 +35,11 @@ class AlsaniaWallet:
             print(f"Failed to fetch balance: {response.text}")
     
     def send_transaction(self, to_address, amount):
-        if self.private_key is None:
-            print("Private key not set. Import or generate a private key.")
-            return
+        response = requests.post(f"{self.node_url}/send_transaction", json=transaction)
+        if response.status_code == 200:
+            print("Transaction sent successfully.")
+        else:
+            print(f"Failed to send transaction: {response.text}")
         
         nonce = self.get_nonce()
         transaction = {
