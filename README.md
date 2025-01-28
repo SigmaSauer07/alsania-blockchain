@@ -36,7 +36,7 @@ Final Commitment: Once a block receives the necessary votes, it is finalized and
 4. AlsaniaCoin (ALSC)
 4.1 Tokenomics
 Supply: AlsaniaCoin has a fixed supply of 100 million coins, ensuring scarcity and potential value appreciation.
-Distribution: Coins are distributed through initial allocation, mining rewards, and periodic incentivization schemes.
+Distribution: Coins are distributed through initial allocation, staking rewards, and periodic incentivization schemes.
 4.2 Utility
 Transactions: ALSC is used for transaction fees and as a medium of exchange within the Alsania ecosystem.
 Governance: ALSC holders can vote on key governance decisions, influencing the development and rules of the network.
