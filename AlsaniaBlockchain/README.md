@@ -1,22 +1,24 @@
 **Alsania Blockchain: A Quantum-Resistant, Scalable Ecosystem Anchored by the AlsaniaCoin (ALSC)**  
-**Version 1.0**  
+**Version 2.0**  
 
 ---
 
 ## **1. Introduction**  
-The Alsania Blockchain is a next-generation decentralized network designed to address critical challenges in finance, governance, and data security. At its core lies the AlsaniaCoin (ALSC), a deflationary utility token with tangible value, tradable on both decentralized and centralized exchanges. ALSC fuels all network operations, incentivizes participation, and serves as the backbone of a compliant, quantum-resistant ecosystem.  
+The **Alsania Blockchain** is a next-generation, quantum-resistant, and highly scalable decentralized network designed to **enhance financial security, governance, and Web3 adoption**. At its core is the **AlsaniaCoin (ALSC)**, a deflationary utility token that powers all network operations. ALSC enables **secure, low-cost transactions, staking, governance, and decentralized AI training**, while **maintaining compliance** with global regulations such as **U.S. SEC/FinCEN and EU MiCA**.  
 
-To ensure granularity and flexibility in microtransactions, the Alsania Blockchain introduces **Embers**, a sub-denomination of ALSC. The conversion rate is **10^18 Embers = 1 ALSC**, allowing for precise fee calculations and small-scale transactions within the ecosystem.  
+To ensure seamless microtransactions, Alsania introduces **Embers**, a sub-denomination of ALSC, with a **conversion rate of 10¹⁸ Embers = 1 ALSC**, allowing for precise transaction fee calculations.  
 
 ---
 
 ## **2. Vision**  
-Alsania’s mission is to create a self-sustaining blockchain economy where:  
-- **ALSC drives intrinsic value**: Utilized for fees, staking, governance, ecosystem incentives, and transactions within the burgeoning Web3 ecosystem.  
-- **Scalability meets unparalleled security**: Dynamic sharding and post-quantum cryptography (Lattice-Based Signatures) ensure enterprise-grade performance and resilience against future quantum computing threats.  
-- **Compliance is seamlessly integrated**: Privacy-preserving tools enable seamless adoption by institutions and enterprises.  
-- **Web3 thrives**: A robust and developer-friendly platform for building and deploying decentralized applications (dApps), NFTs, and tokens, fostering a vibrant and inclusive ecosystem.  
-- **AI innovation is community-driven**: A decentralized AI training framework ensures data integrity, privacy, and governance-driven oversight.  
+The Alsania Blockchain aims to create a **self-sustaining blockchain economy** where:  
+
+- **ALSC drives intrinsic value** → Used for fees, staking, governance, and incentives in the Web3 ecosystem.  
+- **Quantum-resistant security** → **Lattice-Based Cryptography** (CRYSTALS-Dilithium) protects against quantum attacks.  
+- **Unparalleled scalability** → **EVM-compatible L2 rollups** with **dynamic sharding and ZK-Rollups** ensure high throughput and low fees.  
+- **Seamless compliance** → **Zero-Knowledge KYC (ZK-KYC)** ensures privacy while meeting regulatory requirements.  
+- **Decentralized AI innovation** → A **community-governed AI training framework** upholds data privacy and integrity.  
+- **Interoperability with major blockchains** → Supports **cross-chain bridges** to **Ethereum, BNB Chain, Solana, and more**.  
 
 ---
 
@@ -30,14 +32,16 @@ Alsania’s mission is to create a self-sustaining blockchain economy where:
 - **Dynamic Sharding**: Auto-scaling shards process transactions in parallel, significantly increasing throughput and reducing latency.  
 - **Layer-2 Rollups (ZK-Rollups)**: Batch transactions off-chain, settling finality on-chain in ALSC for enhanced scalability and reduced transaction costs.  
 
-### **3.3 Decentralized Storage**  
-- **IPFS/Filecoin Integration**: Leverages decentralized storage solutions, incentivizing node operators with ALSC rewards for pinning and retrieving data, ensuring data availability and resilience.  
+### **3.3 Cross-Chain Bridges & Interoperability**  
+- **Bridges to Ethereum, BNB Chain, Solana, and Polkadot**: Enables smooth **token transfers, liquidity sharing, and cross-chain dApps**.  
+- **Native ALSC Cross-Chain Transactions**: ALSC will be **bridgable across major blockchains**, ensuring high liquidity.  
 
-### **3.4 Seamless Compliance**  
-- **ZK-KYC (Zero-Knowledge Proof KYC)**: Enables identity verification while preserving user privacy, facilitating regulatory compliance and institutional adoption.  
-- **GDPR Compliance**: Implements data privacy measures, including prunable encryption keys for IPFS data, ensuring adherence to data protection regulations.  
+### **3.4 Decentralized Storage & Compliance**  
+- **IPFS/Filecoin Integration**: Stores decentralized data, rewarding nodes in ALSC for pinning and retrieving data.  
+- **Zero-Knowledge KYC (ZK-KYC)**: Users can verify identity **without revealing personal details**, ensuring **SEC and FinCEN compliance**.  
+- **GDPR-Compliant Data Encryption**: Uses **prunable encryption keys** for private, compliant data storage.  
 
-### **3.5 Smart Contracts**  
+### **3.5 Smart Contracts & Web3 Development**  
 - Supports the development and deployment of secure and efficient smart contracts (written in Solidity).  
 - Provides a robust and scalable environment for building a diverse range of decentralized applications (dApps).  
 
