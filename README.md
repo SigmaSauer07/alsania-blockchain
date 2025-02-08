@@ -38,7 +38,7 @@ Alsania’s mission is to create a self-sustaining blockchain economy where:
 - **GDPR Compliance**: Implements data privacy measures, including prunable encryption keys for IPFS data, ensuring adherence to data protection regulations.  
 
 ### **3.5 Smart Contracts**  
-- Supports the development and deployment of secure and efficient smart contracts (written in [Specify programming language, e.g., Solidity]).  
+- Supports the development and deployment of secure and efficient smart contracts (written in Solidity).  
 - Provides a robust and scalable environment for building a diverse range of decentralized applications (dApps).  
 
 ### **3.6 Thriving Web3 Ecosystem**  
