@@ -1,6 +1,0 @@
-cryptography==40.0.2
-requests==2.31.0
-web3
-ipfshttpclient==0.8.0a2
-PyCryptodome==3.17.0
-flask

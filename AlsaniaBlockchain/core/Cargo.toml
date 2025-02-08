@@ -1,0 +1,9 @@
+[package]
+name = "alsania-core"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+substrate = "3.0"
+libp2p = "0.34"
+crystals-dilithium = "0.1"
