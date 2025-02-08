@@ -6,3 +6,10 @@ pub struct AlsaniaEvm;
 impl EvmModule for AlsaniaEvm {
     // ...existing code...
 }
+
+pub mod evm {
+    // Basic structure for the EVM module
+    pub fn initialize() {
+        // Initialization code
+    }
+}

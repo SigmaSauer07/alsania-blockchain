@@ -6,3 +6,10 @@ pub struct AlsaniaAiTraining;
 impl AiTrainingModule for AlsaniaAiTraining {
     // ...existing code...
 }
+
+pub mod ai_training {
+    // Basic structure for the AI training module
+    pub fn initialize() {
+        // Initialization code
+    }
+}
