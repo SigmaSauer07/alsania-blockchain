@@ -1,9 +1,9 @@
 [package]
-name = "runtime"
+name = "ai-training"
 version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-substrate = "3.0"
+ai-training = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

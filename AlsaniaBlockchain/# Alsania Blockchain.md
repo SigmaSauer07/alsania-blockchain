@@ -11,6 +11,14 @@ The Alsania Blockchain is a next-generation, quantum-resistant, and highly scala
 5. Decentralized AI Training (Web3 AI Infrastructure)
 6. Regulatory Compliance & Security
 
+## Modules
+- Core Layer-1
+- Smart Contracts
+- Layer-2 Scaling
+- Cross-Chain Bridges
+- AI Training
+- Compliance & Security
+
 ## Getting Started
 - Follow the instructions in each module's README to set up and run the components.
 - Join the Alsania Testnet & Start Building! 🚀🔥
