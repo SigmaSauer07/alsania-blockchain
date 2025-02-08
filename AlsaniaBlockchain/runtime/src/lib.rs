@@ -1,4 +1,12 @@
-// ...existing code...
+#![cfg_attr(not(feature = "std"), no_std)]
+
+pub mod module {
+    // Define your runtime module logic here
+    pub fn hello_runtime() {
+        println!("Hello, Alsania Runtime!");
+    }
+}
+
 mod alsc_token;
 
 impl alsc_token::Config for Runtime {
