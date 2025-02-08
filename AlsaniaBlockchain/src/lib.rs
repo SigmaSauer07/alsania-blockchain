@@ -1,0 +1,11 @@
+pub mod pos;
+pub mod lattice_based_cryptography;
+pub mod evm_compatibility;
+pub mod dynamic_sharding;
+pub mod zk_rollups;
+pub mod cross_chain_bridges;
+pub mod decentralized_storage;
+pub mod zero_knowledge_kyc;
+pub mod gdpr_compliant_data_encryption;
+pub mod smart_contracts;
+pub mod ai_training_framework;

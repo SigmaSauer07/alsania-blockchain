@@ -5,5 +5,20 @@ edition = "2018"
 
 [dependencies]
 substrate = "3.0"
+libp2p = "0.34"
+dilithium = { git = "https://github.com/PQClean/PQClean.git", package = "dilithium3" }
+crystals-dilithium = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+evm = "0.1"
+zk-rollups = "0.1"
+cross-chain-bridge = "0.1"
+ai-training = "0.1"
+compliance = "0.1"
+ipfs = "0.12"
+filecoin = "0.1"
+ethereum = "0.1"
+solana = "0.1"
+polkadot = "0.1"
+zksync = { git = "https://github.com/matter-labs/zksync.git" }
+axelar = { git = "https://github.com/axelarnetwork/axelar-core.git" }

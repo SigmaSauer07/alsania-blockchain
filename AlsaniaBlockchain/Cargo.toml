@@ -15,6 +15,11 @@ zk-rollups = "0.1"
 cross-chain-bridge = "0.1"
 ai-training = "0.1"
 compliance = "0.1"
+ipfs = "0.1"
+filecoin = "0.1"
+ethereum = "0.1"
+solana = "0.1"
+polkadot = "0.1"
 
 [workspace]
 members = [
@@ -25,4 +30,9 @@ members = [
     "cross-chain-bridge",
     "ai-training",
     "compliance",
+    "ipfs",
+    "filecoin",
+    "ethereum",
+    "solana",
+    "polkadot",
 ]

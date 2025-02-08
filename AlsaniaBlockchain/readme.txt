@@ -79,7 +79,7 @@ The Alsania Blockchain aims to create a self-sustaining blockchain economy where
 ## 5. Roadmap & Scalability Benchmarks  
 
 ### Phase 1: Q2 2025  
-- Testnet launch with staking, governance, and cross-chain bridge to Ethereum.  
+- Testnet launch (AlsaniaTestnet) with staking, governance, and cross-chain bridge to Ethereum.  
 - Developer Grant Program ($5M in ALSC incentives).  
 
 ### Phase 2: Q3-Q4 2025  
@@ -98,13 +98,13 @@ The Alsania Blockchain aims to create a self-sustaining blockchain economy where
 
 ## 6. Competitive Advantage  
 
-| **Feature** | **Alsania Blockchain** | **Existing L2s (Polygon, Optimism, Arbitrum)** | **Quantum-Resistant Chains (QANplatform, MultiversX)** |  
-|------------|----------------|----------------------------|------------------------------|  
-| **Quantum-Resistant Security** | Lattice-Based Signatures | Not quantum-resistant | Limited quantum security |  
-| **Scalability** | Dynamic Sharding + ZK-Rollups | High, but no native sharding | Low TPS |  
-| **Interoperability** | Ethereum, Solana, BNB, Polkadot bridges | Ethereum-compatible | Limited cross-chain support |  
-| **Regulatory Compliance** | ZK-KYC + SEC & GDPR compliance | No native compliance | Unclear compliance |  
-| **AI Training & Incentives** | Decentralized, incentivized AI model training | No AI focus | No AI focus |  
+| **Feature**                  | **Alsania Blockchain**                  | **Existing L2s** (Polygon, Optimism, Arbitrum) | **Quantum-Resistant Chains** (QANplatform, MultiversX) |  
+|------------------------------|-----------------------------------------|------------------------------------------------|--------------------------------------------------------|  
+| **Quantum-Resistant Security** | Lattice-Based Signatures                | Not quantum-resistant                          | Limited quantum security                               |  
+| **Scalability**              | Dynamic Sharding + ZK-Rollups           | High, but no native sharding                   | Low TPS                                                |  
+| **Interoperability**         | Ethereum, Solana, BNB, Polkadot bridges | Ethereum-compatible                            | Limited cross-chain support                            |  
+| **Regulatory Compliance**    | ZK-KYC + SEC & GDPR compliance          | No native compliance                           | Unclear compliance                                     |  
+| **AI Training & Incentives** | Decentralized, incentivized AI model training | No AI focus                                    | No AI focus                                            |  
 
 ---
 
