@@ -1,11 +1,15 @@
 pub fn init() {
-    // Implementation for EVM compatibility and Ethereum L2 support
-    // Initialize EVM environment
-    // ...code to initialize EVM...
+    // Initialize EVM compatibility and Ethereum L2 support
+    setup_evm_compatibility();
+    setup_ethereum_l2_support();
+}
 
-    // Enable Solidity smart contracts
-    // ...code to enable Solidity...
+fn setup_evm_compatibility() {
+    // Code to set up EVM compatibility
+    // ...code to set up EVM compatibility...
+}
 
-    // Support migration of Ethereum dApps
-    // ...code to support dApp migration...
+fn setup_ethereum_l2_support() {
+    // Code to set up Ethereum L2 support
+    // ...code to set up Ethereum L2 support...
 }

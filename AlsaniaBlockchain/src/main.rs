@@ -1,7 +1,7 @@
 mod pos;
 mod lattice_based_cryptography;
 mod evm_compatibility;
-mod dynamic_sharding;
+mod sharding;
 mod zk_rollups;
 mod cross_chain_bridges;
 mod decentralized_storage;
@@ -12,7 +12,13 @@ mod ai_training_framework;
 
 fn main() {
     // Initialize the Alsania Blockchain
+    init_blockchain();
 
+    // Start the network
+    start_network();
+}
+
+fn init_blockchain() {
     // Initialize Proof-of-Stake (PoS) consensus mechanism
     pos::init();
 
@@ -23,7 +29,7 @@ fn main() {
     evm_compatibility::init();
 
     // Initialize Dynamic Sharding
-    dynamic_sharding::init();
+    sharding::init();
 
     // Initialize ZK-Rollups
     zk_rollups::init();
@@ -45,4 +51,9 @@ fn main() {
 
     // Initialize Decentralized AI Training Framework
     ai_training_framework::init();
+}
+
+fn start_network() {
+    // Code to start the network
+    // ...code to start network...
 }

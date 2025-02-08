@@ -1,11 +1,9 @@
 pub fn init() {
-    // Implementation for ZK-Rollups
-    // Initialize ZK-Rollups environment
-    // ...code to initialize ZK-Rollups...
+    // Initialize ZK-Rollups
+    setup_zk_rollups();
+}
 
-    // Batch transactions off-chain
-    // ...code to batch transactions...
-
-    // Settle finality on-chain
-    // ...code to settle finality...
+fn setup_zk_rollups() {
+    // Code to set up ZK-Rollups
+    // ...code to set up ZK-Rollups...
 }
