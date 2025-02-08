@@ -1,64 +1,90 @@
-# Alsania Blockchain Whitepaper: A Quantum-Resistant, Scalable Ecosystem Anchored by AlsaniaCoin (ALSC)  
+# Alsania Blockchain: A Quantum-Resistant, Scalable Ecosystem Anchored by the AlsaniaCoin (ALSC)  
 **Version 1.0**  
 
 ---
 
 ## 1. Introduction  
-The **Alsania Blockchain** is a next-generation, quantum-resistant, and highly scalable decentralized network designed to enhance financial security, governance, and Web3 adoption. At its core is the **AlsaniaCoin (ALSC)**, a deflationary utility token that powers all network operations. ALSC enables secure, low-cost transactions, staking, governance, and decentralized AI training, while maintaining compliance with global regulations such as U.S. SEC/FinCEN and EU MiCA.  
+The **Alsania Blockchain** is a next-generation decentralized network designed to address critical challenges in finance, governance, and data security. At its core lies the **AlsaniaCoin (ALSC)**, a deflationary utility token with tangible value, tradable on both decentralized and centralized exchanges. ALSC fuels all network operations, incentivizes participation, and serves as the backbone of a compliant, quantum-resistant ecosystem.
 
-To ensure seamless microtransactions, Alsania introduces **Embers**, a sub-denomination of ALSC, with a conversion rate of 10¹⁸ Embers = 1 ALSC, allowing for precise transaction fee calculations.  
+To ensure granularity and flexibility in microtransactions, the Alsania Blockchain introduces **Embers**, a sub-denomination of ALSC. The conversion rate is 10¹⁸ Embers = 1 ALSC, allowing for precise fee calculations and small-scale transactions within the ecosystem.
 
 ---
 
 ## 2. Vision  
-The Alsania Blockchain aims to create a self-sustaining blockchain economy where:  
+Alsania’s mission is to create a self-sustaining blockchain economy where:
 
-- **ALSC drives intrinsic value**: Used for fees, staking, governance, and incentives in the Web3 ecosystem.  
-- **Quantum-resistant security**: **Lattice-Based Cryptography** (CRYSTALS-Dilithium) protects against quantum attacks.  
-- **Unparalleled scalability**: **EVM-compatible L2 rollups** with **dynamic sharding and ZK-Rollups** ensure high throughput and low fees.  
-- **Seamless compliance**: **Zero-Knowledge KYC (ZK-KYC)** ensures privacy while meeting regulatory requirements.  
-- **Decentralized AI innovation**: A **community-governed AI training framework** upholds data privacy and integrity.  
-- **Interoperability with major blockchains**: Supports **cross-chain bridges** to **Ethereum, BNB Chain, Solana, and more**.  
+- **ALSC drives intrinsic value**: Utilized for fees, staking, governance, ecosystem incentives, and transactions within the burgeoning Web3 ecosystem.
+- **Scalability meets unparalleled security**: Dynamic sharding, post-quantum cryptography (Lattice-Based Signatures), and asynchronous cross-shard communication ensure enterprise-grade performance and resilience against future quantum computing threats and minimize latency.
+- **Compliance is seamlessly integrated**: Privacy-preserving tools enable seamless adoption by institutions and enterprises.
+- **Web3 thrives**: A robust and developer-friendly platform for building and deploying decentralized applications (dApps), NFTs, and tokens, fostering a vibrant and inclusive ecosystem.
+- **AI innovation is community-driven**: A decentralized AI training framework ensures data integrity, privacy, and governance-driven oversight.
 
 ---
 
 ## 3. Core Technologies  
 
 ### 3.1 Hybrid Consensus Mechanism  
-- **Proof-of-Stake (PoS)**: Validators stake ALSC to secure the network, earn rewards, and ensure decentralization.  
-- **Lattice-Based Cryptography (CRYSTALS-Dilithium)**: Provides quantum-resistant security for transactions.  
-- **Adaptive Inflation Model**: Validator rewards decrease gradually, ensuring long-term security and sustainability.  
+- **Proof-of-Stake (PoS)**: Validators stake ALSC to secure the network and earn rewards, promoting decentralization and network stability.
+- **Lattice-Based Signatures (CRYSTALS-Dilithium)**: Post-quantum cryptography ensures transaction security and future-proofs the blockchain against potential advancements in quantum computing.
+- **Fair Validator Selection**:
+  - **Randomized Selection**: Mitigates the impact of large stake holders.
+  - **Proportional Representation**: Ensures fair representation for all validators.
+  - **Dynamic Adjustment**: Adapts selection probabilities based on performance and network conditions.
+  - **Strict Slashing**: Penalizes malicious or negligent validators.
 
 ### 3.2 Unparalleled Scalability  
-- **EVM-Compatible & Ethereum L2**: Supports Solidity smart contracts and enables seamless migration of Ethereum dApps.  
-- **Dynamic Sharding**: Uses Beacon Chain Coordination (similar to Ethereum 2.0) to auto-scale transactions efficiently.  
-- **ZK-Rollups & Layer-2 Scaling**: Batch transactions off-chain and settle finality on-chain in ALSC, reducing fees and congestion.  
+- **Dynamic Sharding**: Auto-scaling shards process transactions in parallel, significantly increasing throughput and reducing latency.
+- **Layer-2 Rollups (ZK-Rollups)**: Batch transactions off-chain, settling finality on-chain in ALSC for enhanced scalability and reduced transaction costs.
+- **Asynchronous Cross-Shard Communication**: Enables efficient communication between shards without requiring immediate synchronization, further improving throughput and reducing latency.
 
-### 3.3 Cross-Chain Bridges & Interoperability  
-- **Bridges to Ethereum, BNB Chain, Solana, and Polkadot**: Enables smooth token transfers, liquidity sharing, and cross-chain dApps.  
-- **Native ALSC Cross-Chain Transactions**: ALSC will be bridgable across major blockchains, ensuring high liquidity.  
+### 3.3 Decentralized Storage  
+- **IPFS/Filecoin Integration**: Leverages decentralized storage solutions, incentivizing node operators with ALSC rewards for pinning and retrieving data, ensuring data availability and resilience.
 
-### 3.4 Decentralized Storage & Compliance  
-- **IPFS/Filecoin Integration**: Stores decentralized data, rewarding nodes in ALSC for pinning and retrieving data.  
-- **Zero-Knowledge KYC (ZK-KYC)**: Users can verify identity without revealing personal details, ensuring SEC and FinCEN compliance.  
-- **GDPR-Compliant Data Encryption**: Uses prunable encryption keys for private, compliant data storage.  
+### 3.4 Seamless Compliance  
+- **ZK-KYC (Zero-Knowledge Proof KYC)**: Enables identity verification while preserving user privacy, facilitating regulatory compliance and institutional adoption.
+- **GDPR Compliance**: Implements data privacy measures, including prunable encryption keys for IPFS data, ensuring adherence to data protection regulations.
 
-### 3.5 Smart Contracts & Web3 Development  
-- **Supports Solidity, Vyper, and Move**: Developers can build dApps seamlessly on Alsania.  
-- **Compatible with Ethereum & Polygon Ecosystem**: Easy migration of existing dApps, NFTs, and DeFi applications.  
-- **Built-in Developer Grants & Hackathons**: Provides funding and incentives for innovation.  
+### 3.5 Smart Contracts  
+- **Supports the development and deployment of secure and efficient smart contracts** (written in [zkEVM compatible Solidity]).
+- **Provides a robust and scalable environment for building a diverse range of decentralized applications (dApps)**.
 
 ### 3.6 Thriving Web3 Ecosystem  
-- **NFT & Token Creation**: Native support for ERC-20, ERC-721, ERC-1155 tokens.  
-- **DeFi Applications**: Enables DEXs, lending, and staking platforms powered by ALSC.  
-- **Gaming & Metaverse Integration**: On-chain assets, in-game economies, and governance for Web3 gaming.  
-- **Supply Chain Transparency**: Blockchain-based tracking for secure and auditable supply chains.  
+- **Facilitates the creation, minting, and trading of non-fungible tokens (NFTs)** on the blockchain.
+- **Allows the creation and issuance of custom tokens (ERC-20, ERC-721, etc.)** on the platform.
+- **Enables the creation of decentralized exchanges (DEXs), lending platforms, and other innovative DeFi applications**.
+- **Powers immersive gaming experiences with blockchain-based assets, in-game economies, and decentralized governance**.
+- **Improves transparency and efficiency in supply chains through blockchain-based tracking and traceability**.
+- **Facilitates the development of decentralized metaverse experiences with virtual land ownership, digital assets, and social interactions**.
 
 ### 3.7 Decentralized AI Training Framework  
-- **Federated Learning & Homomorphic Encryption**: Ensures AI training without exposing user data.  
-- **On-Chain AI Governance**: ALSC holders vote on datasets, training models, and AI improvements.  
-- **Incentivized Data Contributions**: Contributors earn ALSC for high-quality AI training data.  
-- **Automated Fraud Detection**: AI-based filters prevent malicious or low-quality data inputs.  
+Alsania Blockchain introduces a groundbreaking framework for training its own AI system using decentralized data storage, governance-driven oversight, and privacy-preserving technologies.
+
+- **Decentralized Data Storage and Integrity**:
+  - **Training data is stored on IPFS/Filecoin**, with each entry hashed and recorded on the blockchain for immutability and traceability.
+  - **Data provenance ensures transparency and prevents tampering or injection of bad data**.
+- **Governance-Driven Data Curation**:
+  - **ALSC holders vote on which datasets are approved for AI training through on-chain governance**.
+  - **A reputation system rewards contributors who provide high-quality data**, weighting their votes more heavily in governance decisions.
+  - **ZK-KYC ensures contributor accountability while preserving privacy**.
+- **Consensus-Based Data Validation**:
+  - **Validators verify the quality and relevance of training data**, staking ALSC to participate in the process.
+  - **Regular data audits are conducted using smart contracts and community-driven mechanisms**.
+- **Privacy-Preserving AI Training**:
+  - **Federated learning allows the AI model to be trained locally on users' devices**, with only model updates shared.
+  - **Homomorphic encryption enables computations on encrypted data**, ensuring sensitive information is never exposed.
+- **Incentivizing High-Quality Contributions**:
+  - **Contributors are rewarded with ALSC for providing high-quality data**.
+  - **A portion of the ecosystem fund (15% of transaction fees) supports data collection, curation, and AI training initiatives**.
+- **Preventing Bad Information Input**:
+  - **Automated AI-based filters detect and flag low-quality or malicious data**.
+  - **Governance participants review flagged data and decide whether it should be included**.
+  - **Penalties, such as slashing staked ALSC, are imposed on contributors who intentionally provide bad data**.
+- **Transparent and Auditable AI Training**:
+  - **All decisions related to AI training (e.g., dataset approvals, model updates) are recorded on the blockchain**.
+  - **Smart contracts manage different versions of the AI model**, linking them to the datasets and governance decisions that contributed to their training.
+- **Community-Driven AI Evolution**:
+  - **Community members propose improvements to the AI model through a proposal system**.
+  - **Feedback mechanisms allow users to report issues or biases in the AI's outputs**, refining the model over time.
 
 ---
 
@@ -67,12 +93,24 @@ The Alsania Blockchain aims to create a self-sustaining blockchain economy where
 ### 4.1 Utilities of ALSC  
 | **Use Case**  | **Mechanism** |  
 |--------------|------------|  
-| **Transaction Fees**  | All on-chain transactions require ALSC or Embers. |  
-| **Staking & Validator Rewards**  | ALSC holders stake tokens to secure the network and earn rewards. |  
-| **Governance**  | ALSC holders vote on protocol upgrades, AI training datasets, and treasury allocations. |  
-| **Storage Incentives**  | Node operators earn ALSC for pinning and retrieving decentralized data. |  
-| **Developer Grants**  | 15% of transaction fees fund dApp development and ecosystem growth. |  
-| **AI Training Rewards**  | Contributors and validators earn ALSC for verifying high-quality AI data. |  
+| **Transaction Fees**  | All on-chain actions (transfers, smart contracts, dApp interactions) require ALSC or Embers. |  
+| **Staking**  | Validators and delegators earn ALSC rewards for securing the network, promoting decentralization and network stability. |  
+| **Governance**  | ALSC holders actively participate in on-chain governance, voting on protocol upgrades, treasury allocation, and fee rates. |  
+| **Storage Incentives**  | Node operators earn ALSC for pinning IPFS/Filecoin data, incentivizing decentralized storage and network resilience. |  
+| **Developer Grants**  | 15% of transaction fees are allocated to an ecosystem fund for grants, partnerships, and dApp development incentives. |  
+| **Web3 Ecosystem**  | Utilized for in-app purchases, staking, and governance within dApps built on the Alsania Blockchain. |  
+| **AI Training Incentives**  | Contributors and validators earn ALSC for providing and verifying high-quality training data. |  
+
+### 4.2 Tokenomics  
+- **Total Supply**: 1 billion ALSC (fixed).
+- **Distribution**:
+  - **Staking Rewards**: 40% (minted over 10 years).
+  - **Ecosystem Fund**: 25% (grants, partnerships, dApp development incentives).
+  - **Public Sale**: 20% (fair launch, no pre-mine).
+  - **Team & Advisors**: 10% (3-year vesting with cliff).
+  - **Liquidity Pools**: 5%.
+- **Deflationary Mechanism**: 2% of transaction fees are burned, creating scarcity and increasing the long-term value of ALSC.
+- **Ember Integration**: Embers enable microtransactions and precise fee calculations, enhancing user experience and facilitating broader adoption.
 
 ---
 
@@ -109,6 +147,6 @@ The Alsania Blockchain aims to create a self-sustaining blockchain economy where
 ---
 
 ## 7. Conclusion  
-The **Alsania Blockchain** is a future-proof, scalable, and compliant ecosystem designed for Web3 adoption, AI innovation, and financial security. With its quantum-resistant cryptography, dynamic sharding, cross-chain interoperability, and developer-friendly incentives, Alsania is positioned to be a dominant force in blockchain evolution.  
+The **Alsania Blockchain** is a future-proof, scalable, and compliant ecosystem designed for Web3 adoption, AI innovation, and financial security. With its quantum-resistant cryptography, dynamic sharding, cross-chain interoperability, and developer-friendly incentives, Alsania is positioned to be a dominant force in blockchain evolution.
 
 💡 **Next Steps: Join the Testnet!** → **[Launch Q2 2025]**
