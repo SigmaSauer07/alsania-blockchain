@@ -2,24 +2,26 @@
 name = "alsania_blockchain"
 version = "0.1.0"
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/SigmaSauer07/alsania-blockchain"
 
 [dependencies]
-substrate = "3.0"
-libp2p = "0.34"
-dilithium = { git = "https://github.com/PQClean/PQClean.git", package = "dilithium3" }
-crystals-dilithium = "0.1"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-evm = "0.1"
-zk-rollups = "0.1"
-cross-chain-bridge = "0.1"
 ai-training = "0.1"
 compliance = "0.1"
-ipfs = "0.1"
-filecoin = "0.1"
+cross-chain-bridge = "0.1"
+crystals-dilithium = "0.1"
+dilithium = { git = "https://github.com/PQClean/PQClean.git", package = "dilithium3" }
 ethereum = "0.1"
-solana = "0.1"
+evm = "0.1"
+filecoin = "0.1"
+ipfs = "0.1"
+libp2p = "0.34"
 polkadot = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+solana = "0.1"
+substrate = "3.0"
+zk-rollups = "0.1"
 
 [workspace]
 members = [
@@ -36,3 +38,10 @@ members = [
     "solana",
     "polkadot",
 ]
+
+[workspace.dependencies]
+frame-benchmarking = { version = "4.0.0", optional = true }
+frame-system-benchmarking = { version = "4.0.0", optional = true }
+evm-runtime-template = { path = "evm" }
+parity-scale-codec = "3.0.0"
+serde = { version = "1.0", features = ["derive"] }
