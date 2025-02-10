@@ -21,8 +21,8 @@ To get started with the Alsania Blockchain, follow these steps:
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/SigmaSauer07/Alsania.git
-    cd Alsania/AlsaniaBlockchain
+    git clone https://github.com/SigmaSauer07/alsania-blockchain.git
+    cd alsania-blockchain
     ```
 
 2. Build the project:
