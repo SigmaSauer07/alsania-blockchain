@@ -21,6 +21,10 @@ const App = () => {
     setAccount(accounts[0]);
   };
 
+  const disconnectWallet = () => {
+    setAccount('');
+  };
+
   const uploadToIpfs = async (file) => {
     const result = await ipfs.add(file);
     setIpfsHash(result.path);
@@ -52,6 +56,7 @@ const App = () => {
     <div>
       <h1>Alsania Blockchain</h1>
       <button onClick={connectWallet}>Connect Wallet</button>
+      <button onClick={disconnectWallet}>Disconnect Wallet</button>
       <p>Account: {account}</p>
       <input type="file" onChange={(e) => uploadToIpfs(e.target.files[0])} />
       <p>IPFS Hash: {ipfsHash}</p>
