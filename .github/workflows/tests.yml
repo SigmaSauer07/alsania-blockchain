@@ -1,0 +1,22 @@
+name: Tests  
+on: [pull_request]  
+
+jobs:  
+  test:  
+    runs-on: ubuntu-latest  
+    steps:  
+      - name: Checkout code  
+        uses: actions/checkout@v4  
+
+      - name: Install Python dependencies  
+        run: pip install -r requirements.txt  
+
+      - name: Run Test Suite  
+        run: pytest tests/  
+
+  lint:  
+    runs-on: ubuntu-latest  
+    steps:  
+      - uses: actions/checkout@v4  
+      - name: Lint Python Code  
+        run: pylint core/  
