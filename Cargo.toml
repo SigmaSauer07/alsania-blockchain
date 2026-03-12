@@ -15,7 +15,7 @@ jsonrpsee = { version = "0.23.2", features = [ "server" ] }
 log = { version = "0.4.21", default-features = false }
 parity-scale-codec = { version = "3.6.12", default-features = false, features = [
 	"derive",
-	"max-encoded-len",
+	"max-encoder-len",
 ] }
 scale-info = { version = "2.11.1", default-features = false }
 ai-training = "0.1"
@@ -81,6 +81,7 @@ sp-runtime = { workspace = true }
 sp-timestamp = { workspace = true }
 substrate-frame-rpc-system = { workspace = true }
 substrate-prometheus-endpoint = { workspace = true }
+substrate-build-script-utils = { workspace = true }
 polkadot-cli = { workspace = true }
 polkadot-primitives = { workspace = true }
 xcm = { workspace = true }
