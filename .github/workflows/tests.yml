@@ -1,38 +1,35 @@
 name: Tests
-on: [pull_request]
+on: [pull_request, push]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      
+
       - uses: Swatinem/rust-cache@v2
-      
+
       - name: Run Clippy
         run: |
-          cargo clippy --all-targets --all-features -- -D warnings || true
-        continue-on-error: true
+          cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
+  test-suite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: dtolnay/rust-toolchain@stable
-      
+
       - uses: Swatinem/rust-cache@v2
-      
+
       - name: Build Project
         run: |
-          cargo build --verbose || true
-        continue-on-error: true
-      
+          cargo build --verbose
+
       - name: Run Tests
         run: |
-          cargo test --all --verbose || true
-        continue-on-error: true
+          cargo test --all --verbose
