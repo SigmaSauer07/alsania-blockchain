@@ -156,14 +156,18 @@ pub fn new_partial(
         )?)),
         BackendType::Sql => {
             let db_path = db_config_dir(config).join("sql");
-            std::fs::create_dir_all(&db_path).expect("failed creating sql db directory");
+            std::fs::create_dir_all(&db_path)
+                .map_err(|e| sc_service::Error::Other(format!("Failed creating sql db directory: {}", e)))?;
+            
+            let db_path_str = Path::new("sqlite:///")
+                .join(db_path)
+                .join("frontier.db3")
+                .to_str()
+                .ok_or_else(|| sc_service::Error::Other("Invalid database path".to_string()))?;
+            
             let backend = futures::executor::block_on(fc_db::sql::Backend::new(
                 fc_db::sql::BackendConfig::Sqlite(fc_db::sql::SqliteBackendConfig {
-                    path: Path::new("sqlite:///")
-                        .join(db_path)
-                        .join("frontier.db3")
-                        .to_str()
-                        .unwrap(),
+                    path: db_path_str,
                     create_if_missing: true,
                     thread_count: eth_config.frontier_sql_backend_thread_count,
                     cache_size: eth_config.frontier_sql_backend_cache_size,
@@ -172,7 +176,7 @@ pub fn new_partial(
                 std::num::NonZeroU32::new(eth_config.frontier_sql_backend_num_ops_timeout),
                 storage_override.clone(),
             ))
-            .unwrap_or_else(|err| panic!("failed creating sql backend: {:?}", err));
+            .map_err(|e| sc_service::Error::Other(format!("Failed creating sql backend: {:?}", e)))?;
             FrontierBackend::Sql(Arc::new(backend))
         }
     };
