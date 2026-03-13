@@ -42,9 +42,9 @@ zk-rollups = "0.1"
 [workspace]
 members = [
     ".",
-    "node"
+    "node",
     "runtime",
-    "template-fuzzeer"
+    "template-fuzzeer",
     "evm",
     "zk-rollups",
     "cross-chain-bridge",
